@@ -40,9 +40,6 @@ namespace Razel {
 
 		// UI Panels
 		void UI_ToolBars();
-
-		// 3D Model Generation
-		void Generate3DModel(const std::string& prompt, const std::string& imagePath);
 	private:
 		Razel::OrthographicCameraController m_CameraController;
 
