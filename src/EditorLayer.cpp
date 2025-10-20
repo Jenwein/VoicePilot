@@ -42,6 +42,8 @@ namespace Razel {
 		m_ActiveScene = CreateRef<Scene>();
 		m_EditorCamera = EditorCamera(30.0f, 1.778f, 0.1f, 1000.0f);
 
+		m_AgentCore = CreateScope<AgentCore>();
+		//m_AgentCore->Init();
 	}
 
 	void EditorLayer::OnDetach()
@@ -52,6 +54,9 @@ namespace Razel {
 	void EditorLayer::OnUpdate(Timestep ts)
 	{
 		RZ_PROFILE_FUNCTION();
+
+		m_AgentCore->OnUpdate();
+
 		// 当帧缓冲大小与视口大小不同时,且视口大小不为0
 		// 因为当前的流程中,先OnUpdate,渲染,填充帧缓冲,解绑,然后在OnImGuiRenderer中去调整视口大小,此时会导致纹理为空,所以有一个黑色的闪烁
 		if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
@@ -220,16 +225,21 @@ namespace Razel {
 			ImGui::EndMenuBar();
 		}
 
+		// Voice Pilot
+		//AgentState currentState = m_AgentCore->GetCurrentState();
+		//switch (currentState)
+		//{
+		//}
 
 		ImGui::Begin("TODO");
 		//TODO:
 		ImGui::End();
 
 		ImGui::Begin("TODO2");
-		//TODO:
+		//TODO:后期尝试实现一个悬浮球效果显示
 		ImGui::End();
 
-		// ViewPort显示一个3D模型作为语言助手的形象
+		// TODO:后期ViewPort显示一个3D模型作为语言助手的形象
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
@@ -307,75 +317,7 @@ namespace Razel {
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
-		// 快捷键
-		if (e.GetRepeatCount() > 0)
-		{
-			return false;
-		}
 
-		bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
-		bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
-
-		switch (e.GetKeyCode())
-		{
-		case Key::N:
-		{
-			if (control)
-				NewScene();
-			break;
-		}
-		case Key::O:
-		{
-			if (control)
-				OpenScene();
-			break;
-		}
-		case Key::S:
-		{
-			if (control) {
-				if (shift)
-					SaveSceneAs();
-				else
-					SaveScene();
-			}
-			break;
-		}
-		case Key::D:
-		{
-			if (control)
-				OnDuplicateEntity();
-			break;
-		}
-
-		// Gizmos
-		case Key::Q:
-		{
-			if (!ImGuizmo::IsUsing())
-				m_GizmoType = -1;
-			break;
-		}
-		case Key::W:
-		{
-			if (!ImGuizmo::IsUsing())
-				m_GizmoType = ImGuizmo::OPERATION::TRANSLATE;
-			break;
-		}
-		case Key::E:
-		{
-			if (!ImGuizmo::IsUsing())
-				m_GizmoType = ImGuizmo::OPERATION::ROTATE;
-			break;
-		}
-		case Key::R:
-		{
-			if (!ImGuizmo::IsUsing())
-				m_GizmoType = ImGuizmo::OPERATION::SCALE;
-			break;
-		}
-		default:
-			break;
-		}
-		return false;
 	}
 
 	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent& e)
@@ -397,40 +339,7 @@ namespace Razel {
 		{
 			Renderer2D::BeginScene(m_EditorCamera);
 		}
-		if (m_ShowPhysicsColliders)
-		{
-			// BoxColliders
-			{
-				auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, BoxCollider2DComponent>();
-				for (auto entity : view)
-				{
-					auto [tc, bc2d] = view.get<TransformComponent, BoxCollider2DComponent>(entity);
-					glm::vec3 translation = tc.Translation + glm::vec3{ bc2d.Offset, 0.001f };
-					glm::vec3 scale = tc.Scale * glm::vec3(bc2d.Size * 2.0f, 1.0f);
 
-					glm::mat4 transform = glm::translate(glm::mat4(1.0f), translation)
-						* glm::rotate(glm::mat4(1.0f), tc.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f))
-						* glm::scale(glm::mat4(1.0f), scale);
-
-					Renderer2D::DrawRect(transform, glm::vec4(0, 1, 0, 1));
-				}
-			}
-			// CircleColliders
-			{
-				auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, CircleCollider2DComponent>();
-				for (auto entity : view)
-				{
-					auto [tc, cc2d] = view.get<TransformComponent, CircleCollider2DComponent>(entity);
-					glm::vec3 translation = tc.Translation + glm::vec3{ cc2d.Offset, 0.001f };
-					glm::vec3 scale = tc.Scale * glm::vec3(cc2d.Radius * 2.0f);
-
-					glm::mat4 transform = glm::translate(glm::mat4(1.0f), translation)
-						* glm::scale(glm::mat4(1.0f), scale);
-
-					Renderer2D::DrawCircle(transform, glm::vec4(0, 1, 0, 1));
-				}
-			}
-		}
 		Renderer2D::EndScene();
 	}
 

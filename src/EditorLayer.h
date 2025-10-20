@@ -1,9 +1,10 @@
 #pragma once
 
 #include <Razel.h>
+#include <atomic>
 
 #include "Razel/Renderer/EditorCamera.h"
-#include <atomic>
+#include "Core/AgentCore.h"
 
 namespace Razel {
 
@@ -85,9 +86,7 @@ namespace Razel {
 		// Editor resources
 		Ref<Texture2D> m_IconPlay, m_IconStop;
 
-		// 3D Model Generation
-		std::string m_SelectedImagePath;
-		enum class GenerationStatus { Idle, Generating, Success, Failed };
-		std::atomic<GenerationStatus> m_GenerationStatus = GenerationStatus::Idle;
+
+		Scope<AgentCore> m_AgentCore;
 	};
 }

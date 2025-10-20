@@ -7,9 +7,24 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\EditorLayer.h" />
+    <ClInclude Include="src\Core\AgentCore.h" />
+    <ClInclude Include="src\Audio\AudioManager.h" />
+    <ClInclude Include="src\Tools\ToolRegistry.h" />
+    <ClInclude Include="src\Platform\ProcessUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\EditorLayer.cpp" />
     <ClCompile Include="src\VoicePilotApp.cpp" />
+    <ClCompile Include="src\Core\AgentCore.cpp" />
+    <ClCompile Include="src\Audio\AudioManager.cpp" />
+    <ClCompile Include="src\Tools\ToolRegistry.cpp" />
+    <ClCompile Include="src\Tools\SystemTools.cpp" />
+    <ClCompile Include="src\Platform\ProcessUtils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FlowChart.md" />
+    <None Include="scripts\tmp.py" />
+    <None Include="scripts\ai_service.py" />
+    <None Include="scripts\FlowChart.md" />
   </ItemGroup>
 </Project>
