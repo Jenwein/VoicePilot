@@ -1,5 +1,6 @@
 #include "EditorLayer.h"
 #include <imgui/imgui.h>
+//#include <miniaudio.h>	//音频
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -51,7 +52,6 @@ namespace Razel {
 	void EditorLayer::OnUpdate(Timestep ts)
 	{
 		RZ_PROFILE_FUNCTION();
-
 		// 当帧缓冲大小与视口大小不同时,且视口大小不为0
 		// 因为当前的流程中,先OnUpdate,渲染,填充帧缓冲,解绑,然后在OnImGuiRenderer中去调整视口大小,此时会导致纹理为空,所以有一个黑色的闪烁
 		if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
