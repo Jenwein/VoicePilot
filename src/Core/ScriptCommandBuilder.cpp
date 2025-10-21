@@ -42,28 +42,16 @@ namespace Razel {
 
 	std::string ScriptCommandBuilder::BuildCommand(const PythonScriptCommand& commandInfo)
 	{
-		// TODO:当前的拼接无法正常运行
 		std::filesystem::path scriptPath = m_ScriptsPath / "ai_service.py";
 		std::stringstream cmd;
 
-		cmd << "\"" << m_PythonExecutablePath.string() << "\" "
-			<< "\"" << scriptPath.string() << "\" ";
-
-		cmd << commandInfo.SubCommand;
+		cmd << "\"" << m_PythonExecutablePath.string() << "\"";
+		cmd << " \"" << scriptPath.string() << "\"";
+		cmd << " " << commandInfo.SubCommand;
 
 		for (const auto& arg : commandInfo.Args) {
 			cmd << " " << arg.Flag << " ";
-			if (arg.Value.find(' ') != std::string::npos) {
-				cmd << "\"" << arg.Value << "\"";
-			}
-			else {
-				if (arg.Flag == "--file_path") {
-					cmd << "\"" << std::filesystem::absolute(arg.Value).string() << "\"";
-				}
-				else {
-					cmd << "\"" << arg.Value << "\"";
-				}
-			}
+			cmd << "\"" << arg.Value << "\"";
 		}
 
 		return cmd.str();

@@ -11,7 +11,8 @@ namespace Razel {
 // 根据不同平台选择实现
 #ifdef _WIN32
 	// Windows specific implementation
-		auto pipe = _popen(cmd, "r");
+		std::string command = "cmd /c \"" + std::string(cmd) + "\"";
+		auto pipe = _popen(command.c_str(), "r");
 		if (!pipe) {
 			throw std::runtime_error("Failed to open pipe for command execution!");
 		}

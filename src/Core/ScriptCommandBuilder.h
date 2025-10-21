@@ -24,7 +24,6 @@ namespace Razel {
 		ScriptCommandBuilder();
 
 		std::string BuildCommand(const PythonScriptCommand& commandInfo);
-
 	private:
 		std::filesystem::path m_ScriptsPath;
 		std::filesystem::path m_PythonExecutablePath;
