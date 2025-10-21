@@ -3,7 +3,7 @@
         "description": "Gets the current local date and time.",
         "name": "get_current_time",
         "parameters": {
-            "properties": null,
+            "properties": {},
             "required": [],
             "type": "OBJECT"
         }

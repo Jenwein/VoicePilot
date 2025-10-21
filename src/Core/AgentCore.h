@@ -26,8 +26,8 @@ namespace Razel
 		AgentState m_CurrentState;
 		Scope<AudioManager> m_AudioManager;
 		ScriptCommandBuilder m_CommandBuilder;
-		const std::string m_InputAudioPath = "input.wav";	// 定义临时音频文件名
-		const std::string m_OutputAudioPath = "output.wav";	// 临时输出音频文件名
+		const std::string m_InputAudioPath = "Resources/audios/input.wav";
+		const std::string m_OutputAudioPath = "Resources/audios/output.wav";
 		const std::string m_ToolDefsFilePath = "Resources/prompts/toolDefsPrompt.json";
 	};
 }

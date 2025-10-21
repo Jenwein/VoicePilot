@@ -32,7 +32,7 @@ namespace Razel {
 	}
 
 	std::string GetCurrentTimeTool::Execute(const nlohmann::json& args) {
-		// 这个工具忽略任何传入的参数
+		// 锟斤拷锟斤拷锟斤拷吆锟斤拷锟斤拷魏未锟斤拷锟侥诧拷锟斤拷
 		return "Success: Current time is " + getCurrentTimeString();
 	}
 
@@ -42,7 +42,7 @@ namespace Razel {
 			{"description", "Gets the current local date and time."},
 			{"parameters", {
 				{"type", "OBJECT"},
-				{"properties", {}},
+				{"properties", nlohmann::json::object()},
 				{"required", nlohmann::json::array()}
 			}}
 		};
@@ -57,7 +57,7 @@ namespace Razel {
 			std::filesystem::path filePath(args["path"].get<std::string>());
 			std::string content = args["content"].get<std::string>();
 
-			// 确保目录存在
+			// 确锟斤拷目录锟斤拷锟斤拷
 			if (filePath.has_parent_path()) {
 				std::filesystem::create_directories(filePath.parent_path());
 			}
@@ -97,7 +97,7 @@ namespace Razel {
 		};
 	}
 
-	// --- GetKnownFolderPathTool 实现 ---
+	// --- GetKnownFolderPathTool 实锟斤拷 ---
 	std::string GetKnownFolderPathTool::Execute(const nlohmann::json& args) {
 		if (!args.contains("folder_name")) {
 			return "Error: Missing required argument 'folder_name'.";
@@ -134,7 +134,7 @@ namespace Razel {
 			return "Error: Failed to get known folder path.";
 		}
 #else
-		// 为 Linux/macOS 提供一个简单的实现
+		// 为 Linux/macOS 锟结供一锟斤拷锟津单碉拷实锟斤拷
 		const char* home = getenv("HOME");
 		if (home == nullptr) {
 			return "Error: Could not get HOME environment variable.";

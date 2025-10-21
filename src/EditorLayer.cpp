@@ -135,7 +135,7 @@ namespace Razel {
 		{
 			int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
 			m_HoveredEntity = pixelData == -1 ? Entity() : Entity((entt::entity)pixelData, m_ActiveScene.get());
-			RZ_CORE_WARN("Pixel data = {0}", pixelData);
+			//RZ_CORE_WARN("Pixel data = {0}", pixelData);
 		}
 
 		OnOverlayRender();
@@ -255,7 +255,7 @@ namespace Razel {
 		ImGui::Begin("TODO");
 		if (ImGui::Button("test_ExecPython"))
 		{
-			m_AgentCore->ProcessAudio("input.wav");
+			m_AgentCore->ProcessAudio("Resources/audios/input.wav");
 		}
 		
 		//TODO:

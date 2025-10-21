@@ -44,8 +44,8 @@ namespace Razel
 
 	void AgentCore::OnUpdate()
 	{
-		// Î´À´¿ÉÒÔ¸ù¾İ m_CurrentState ÔÚÕâÀï×öÒ»Ğ©Ã¿Ö¡¸üĞÂµÄ²Ù×÷
-		// ÀıÈç£¬ÔÚ Listening ×´Ì¬ÏÂ¼ì²âÒôÁ¿µÈ
+		// æœªæ¥å¯ä»¥æ ¹æ® m_CurrentState åœ¨è¿™é‡Œåšä¸€äº›æ¯å¸§æ›´æ–°çš„æ“ä½œ
+		// ä¾‹å¦‚ï¼Œåœ¨ Listening çŠ¶æ€ä¸‹æ£€æµ‹éŸ³é‡ç­‰
 	}
 
 	void AgentCore::ProcessAudio(const std::string& audioFilePath)
@@ -53,7 +53,7 @@ namespace Razel
 		std::cout << "[AgentCore] ====== STAGE 1 & 2: UNDERSTAND AND EXECUTE ======" << std::endl;
 		try
 		{
-			// --- STAGE 1: Àí½âÓë¹æ»® ---
+			// --- STAGE 1: ç†è§£ä¸è§„åˆ’ ---
 			PythonScriptCommand understandCommand;
 			understandCommand.SubCommand = "understand";
 			understandCommand.Args = {
@@ -61,7 +61,7 @@ namespace Razel
 				{"--prompt_text", m_ToolDefsFilePath}
 			};
 
-			// 3. ¹¹½¨²¢Ö´ĞĞÃüÁî
+			// 3. æ„å»ºå¹¶æ‰§è¡Œå‘½ä»¤
 			std::string command = m_CommandBuilder.BuildCommand(understandCommand);
 			std::cout << "[AgentCore] Executing 'understand' command:\n" << command<< std::endl;
 			std::string output = ProcessUtils::Exec(command.c_str());
@@ -80,9 +80,9 @@ namespace Razel
 
 			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
 			
-			// --- STAGE 2: Ö´ĞĞ ---
+			// --- STAGE 2: æ‰§è¡Œ ---
 
-			// 4. ½âÎö Python ·µ»ØµÄ Function Call JSON
+			// 4. è§£æ Python è¿”å›çš„ Function Call JSON
 			nlohmann::json functionCallJson = nlohmann::json::parse(jsonOutput);
 
 			if (functionCallJson.contains("error")) {
@@ -92,12 +92,12 @@ namespace Razel
 			std::string toolName = functionCallJson["functionCall"]["name"];
 			nlohmann::json toolArgs = functionCallJson["functionCall"]["args"];
 
-			// 5. µ÷ÓÃ ToolRegistry Ö´ĞĞ¹¤¾ß
+			// 5. è°ƒç”¨ ToolRegistry æ‰§è¡Œå·¥å…·
 			std::cout << "[AgentCore] Executing tool '" << toolName << "' via ToolRegistry." << std::endl;
 			std::string toolResult = ToolRegistry::GetInstance().ExecuteTool(toolName, toolArgs);
 			std::cout << "[AgentCore] Tool execution result: " << toolResult << std::endl;
 
-			// 6. ½øÈëÏÂÒ»¸ö½×¶Î£ºÉú³É²¢²¥±¨»Ø¸´
+			// 6. è¿›å…¥ä¸‹ä¸€ä¸ªé˜¶æ®µï¼šç”Ÿæˆå¹¶æ’­æŠ¥å›å¤
 			GenerateAndSpeakResponse(toolResult);
 
 		}
@@ -109,7 +109,7 @@ namespace Razel
 		catch (const std::runtime_error& e)
 		{
 			std::cerr << "[AgentCore] Error during processing: " << e.what() << std::endl;
-			m_CurrentState = AgentState::Idle; // ·¢Éú´íÎóÊ±Ò²Òª·µ»Ø Idle ×´Ì¬
+			m_CurrentState = AgentState::Idle; // å‘ç”Ÿé”™è¯¯æ—¶ä¹Ÿè¦è¿”å› Idle çŠ¶æ€
 		}
 	}
 
@@ -129,7 +129,7 @@ namespace Razel
 
 		try
 		{
-			// --- STAGE 3: ÏìÓ¦Éú³É ---
+			// --- STAGE 3: å“åº”ç”Ÿæˆ ---
 			PythonScriptCommand genResponseCommand;
 			genResponseCommand.SubCommand = "generate_response";
 			genResponseCommand.Args = { {"--result_text", toolResult} };
@@ -139,6 +139,7 @@ namespace Razel
 			std::string output = ProcessUtils::Exec(command.c_str());
 			std::cout << "[AgentCore] Received output from Python: " << output << std::endl;
 
+			// ä»Pythonè¾“å‡ºä¸­æå–JSONéƒ¨åˆ†
 			std::string jsonOutput;
 			size_t firstBrace = output.find('{');
 			size_t lastBrace = output.rfind('}');
@@ -147,15 +148,42 @@ namespace Razel
 				jsonOutput = output.substr(firstBrace, lastBrace - firstBrace + 1);
 			}
 			else {
-				// Èç¹ûÃ»ÓĞÕÒµ½ÓĞĞ§µÄJSON½á¹¹£¬Ê¹ÓÃÕû¸öÊä³ö
+				// å¦‚æœæ²¡æœ‰æ‰¾åˆ°æœ‰æ•ˆçš„JSONç»“æ„ï¼Œä½¿ç”¨æ•´ä¸ªè¾“å‡ºï¼ˆå‘åå…¼å®¹ï¼‰
 				jsonOutput = output;
 			}
 
 			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
 
-			std::string finalResponseText = jsonOutput;
+			// è§£æJSONä»¥æå–å“åº”æ–‡æœ¬
+			std::string finalResponseText;
+			try {
+				nlohmann::json responseJson = nlohmann::json::parse(jsonOutput);
+				if (responseJson.contains("response")) {
+					finalResponseText = responseJson["response"];
+				}
+				else {
+					// å¦‚æœJSONä¸­æ²¡æœ‰responseå­—æ®µï¼Œä½¿ç”¨æ•´ä¸ªJSONå­—ç¬¦ä¸²
+					finalResponseText = jsonOutput;
+				}
+			}
+			catch (const nlohmann::json::parse_error& e) {
+				// å¦‚æœè§£æå¤±è´¥ï¼Œä½¿ç”¨åŸå§‹è¾“å‡º
+				finalResponseText = output;
+				// å°è¯•ä»è¾“å‡ºä¸­æå–JSONå“åº”
+				size_t responseStart = output.find("\"response\":");
+				if (responseStart != std::string::npos) {
+					size_t quoteStart = output.find('"', responseStart + 12);
+					if (quoteStart != std::string::npos) {
+						size_t quoteEnd = output.find('"', quoteStart + 1);
+						if (quoteEnd != std::string::npos) {
+							// ç®€å•å¤„ç†ï¼Œæå–ç¬¬ä¸€ä¸ªå¼•å·ä¹‹é—´çš„å†…å®¹
+							finalResponseText = output.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+						}
+					}
+				}
+			}
 
-			// --- STAGE 4: ²¥±¨ ---
+			// --- STAGE 4: æ’­æŠ¥ ---
 			m_CurrentState = AgentState::Speaking;
 			PythonScriptCommand ttsCommand;
 			ttsCommand.SubCommand = "tts";
@@ -165,13 +193,39 @@ namespace Razel
 			};
 
 			command = m_CommandBuilder.BuildCommand(ttsCommand);
-			std::cout << "[AgentCore] Executing 'tts' command..." << std::endl;
-			ProcessUtils::Exec(command.c_str()); // Ö´ĞĞTTS£¬²»ĞèÒª²¶»ñÊä³ö
+			std::cout << "[AgentCore] Executing 'tts' command\n" << command << std::endl;
+			std::string ttsOutput = ProcessUtils::Exec(command.c_str()); // æ‰§è¡ŒTTSï¼Œæ•è·è¾“å‡º
+			std::cout << "[AgentCore] Received output from TTS: " << ttsOutput << std::endl;
+
+			// è§£æTTSè¿”å›çš„JSON
+			try {
+				std::string ttsJsonOutput;
+				size_t firstBrace = ttsOutput.find('{');
+				size_t lastBrace = ttsOutput.rfind('}');
+
+				if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
+					ttsJsonOutput = ttsOutput.substr(firstBrace, lastBrace - firstBrace + 1);
+					nlohmann::json ttsResult = nlohmann::json::parse(ttsJsonOutput);
+					
+					if (ttsResult.contains("error")) {
+						std::cerr << "[AgentCore] TTS Error: " << ttsResult["error"].get<std::string>() << std::endl;
+						if (ttsResult.contains("details")) {
+							std::cerr << "[AgentCore] TTS Error Details: " << ttsResult["details"].get<std::string>() << std::endl;
+						}
+					} else if (ttsResult.contains("status") && ttsResult["status"] == "success") {
+						std::cout << "[AgentCore] TTS Success: " << ttsResult["message"].get<std::string>() << std::endl;
+					}
+				}
+			}
+			catch (const nlohmann::json::parse_error& e) {
+				// å¦‚æœè§£æå¤±è´¥ï¼Œå¿½ç•¥é”™è¯¯ï¼Œç»§ç»­æ’­æ”¾éŸ³é¢‘
+				std::cerr << "[AgentCore] Warning: Failed to parse TTS JSON output: " << e.what() << std::endl;
+			}
 
 			std::cout << "[AgentCore] Playing response audio..." << std::endl;
 			m_AudioManager->PlayAudioFile(m_OutputAudioPath);
 
-			// ²¥±¨Íê³Éºó£¬·µ»Ø Idle ×´Ì¬
+			// æ’­æŠ¥å®Œæˆåï¼Œè¿”å› Idle çŠ¶æ€
 			m_CurrentState = AgentState::Idle;
 			std::cout << "[AgentCore] Processing finished. Switched back to Idle state." << std::endl;
 		}

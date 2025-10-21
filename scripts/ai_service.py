@@ -3,14 +3,26 @@ import os
 import argparse
 import json
 import wave
+import logging
+import sys
 from google import genai
 from google.genai import types
 
 # --- 1. 配置 ---
+# 配置日志记录
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('ai_service.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stderr)  # 错误信息仍然输出到stderr
+    ]
+)
+
 try:
     client = genai.Client()
 except KeyError:
-    print("错误: 请先设置 GEMINI_API_KEY 环境变量。")
+    logging.error("请先设置 GEMINI_API_KEY 环境变量。")
     exit(1)
 
 # --- 2. 任务处理函数 ---
@@ -20,20 +32,20 @@ def handle_understand(args):
     处理"理解与规划"任务 (Stage 1)
     接收音频和System Prompt文件路径，返回Function Call JSON
     """
-    print(f'-- Python 开始处理理解任务: 文件路径="{args.file_path}", 工具定义文件="{args.prompt_text}"')
+    logging.info(f'开始处理理解任务: 文件路径="{args.file_path}", 工具定义文件="{args.prompt_text}"')
 
     try:
         # 1. 读取工具定义文件
-        print("-- 正在读取工具定义文件...")
+        logging.info("正在读取工具定义文件...")
         with open(args.prompt_text, 'r', encoding='utf-8') as f:
             function_declarations_list = json.load(f)
-        print("-- 工具定义文件读取成功")
+        logging.info("工具定义文件读取成功")
 
         # 2. 上传音频文件
         # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 29, client.files.upload)
-        print("-- 正在上传音频文件...")
+        logging.info("正在上传音频文件...")
         audio_file = client.files.upload(file=args.file_path)
-        print(f"-- 音频文件上传成功: {audio_file.name}")
+        logging.info(f"音频文件上传成功: {audio_file.name}")
 
         # 3. 准备 Tools 定义
         #    prompt_text 现在是包含 function_declarations 的JSON文件路径
@@ -55,7 +67,7 @@ def handle_understand(args):
         
         请不要在不确定的情况下猜测或强行调用工具。
         """
-        print("-- 正在向 Gemini API 发送请求...")
+        logging.info("正在向 Gemini API 发送请求...")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[instructional_prompt, audio_file],
@@ -89,20 +101,23 @@ def handle_understand(args):
             }, ensure_ascii=False))
 
     except FileNotFoundError as e:
+        logging.error(f"文件未找到: {str(e)}")
         print(json.dumps({"error": f"文件未找到: {str(e)}"}))
     except json.JSONDecodeError:
+        logging.error("Tool 定义文件不是有效的JSON格式。")
         print(json.dumps({"error": "Tool 定义文件不是有效的JSON格式。"}))
     except Exception as e:
         # 捕获其他可能的API调用异常或处理异常
+        logging.error(f"处理过程中发生未知错误: {str(e)}")
         print(json.dumps({"error": f"处理过程中发生未知错误: {str(e)}"}))
 
 
 def handle_generate_response(args):
     """
-    处理“响应生成”任务 (Stage 3)
+    处理"响应生成"任务 (Stage 3)
     接收执行结果，返回自然语言回复
     """
-    print(f'-- Python 收到生成响应任务: 执行结果="{args.result_text}"')
+    logging.info(f'收到生成响应任务: 执行结果="{args.result_text}"')
 
     try:
         # 1. 构建 Prompt
@@ -118,27 +133,39 @@ def handle_generate_response(args):
 
         # 2. 调用模型发起请求
         # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
-        print("-- 正在向 Gemini API 发送请求以生成自然语言回复...")
+        logging.info("正在向 Gemini API 发送请求以生成自然语言回复...")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt
         )
 
-        # 3. 提取并打印回复
+        # 3. 提取并打印回复（以JSON格式）
         if response.text:
             # 清理一下可能的前后空白
             final_response = response.text.strip()
-            print(final_response)
+            # 以JSON格式返回
+            result = {
+                "response": final_response
+            }
+            print(json.dumps(result, ensure_ascii=False))
         else:
             # 如果API没有返回文本，提供一个备用回复
-            print(f"操作已完成，结果是：{args.result_text}。")
+            fallback_response = f"操作已完成，结果是：{args.result_text}。"
+            result = {
+                "response": fallback_response
+            }
+            print(json.dumps(result, ensure_ascii=False))
 
     except Exception as e:
         # 捕获API调用异常或处理异常，并返回一个对用户友好的错误信息
-        print(f"抱歉，我在总结结果时遇到了点麻烦。操作已经执行，其结果是：{args.result_text}。")
-        # 您也可以将详细错误打印到 stderr 供调试
-        import sys
-        print(f"Error in handle_generate_response: {e}", file=sys.stderr)
+        error_response = f"抱歉，我在总结结果时遇到了点麻烦。操作已经执行，其结果是：{args.result_text}。"
+        result = {
+            "response": error_response,
+            "error": str(e)
+        }
+        logging.error(f"处理过程中发生错误: {e}")
+        print(json.dumps(result, ensure_ascii=False))
+
 
 def write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_width: int = 2, rate: int = 24000):
     """将原始PCM数据写入WAV文件"""
@@ -150,16 +177,16 @@ def write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_wi
 
 def handle_tts(args):
     """
-    处理“语音合成”任务 (Stage 4)
+    处理"语音合成"任务 (Stage 4)
     接收文本，保存为音频文件
     """
-    print(f'-- Python 收到TTS任务: 文本="{args.text}", 输出到="{args.output_file}"')
+    logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{args.output_file}"')
 
     try:
         # 1. 调用 TTS 模型
         #    参考 TTSexam.py 和 Submodules - Google Gen AI SDK documentation.pdf
         #    API 参考: Page 189 (GenerateContentConfig), Page 399 (SpeechConfig)
-        print("-- 正在向 Gemini TTS API 发送请求...")
+        logging.info("正在向 Gemini TTS API 发送请求...")
         response = client.models.generate_content(
            model="gemini-2.5-flash-preview-tts", # 使用最新的TTS模型
            contents=args.text,
@@ -183,16 +210,26 @@ def handle_tts(args):
 
             # 3. 将音频数据写入文件
             write_wave_file(args.output_file, audio_data)
-            print(f"-- 语音文件已成功保存到: {args.output_file}")
-            # 成功时，可以什么都不输出，或者输出一个成功标记，由C++检查退出码0即可
+            # 以JSON格式返回成功信息
+            result = {
+                "status": "success",
+                "message": f"语音文件已成功保存到: {args.output_file}"
+            }
+            print(json.dumps(result, ensure_ascii=False))
         else:
             # 如果API没有返回预期的音频数据
-            raise ValueError("API响应中未找到有效的音频数据。")
+            error_msg = "API响应中未找到有效的音频数据。"
+            logging.error(error_msg)
+            raise ValueError(error_msg)
 
     except Exception as e:
-        # 捕获API调用异常或文件写入异常
-        import sys
-        print(f"错误: 语音合成失败 - {str(e)}", file=sys.stderr)
+        # 捕获API调用异常或文件写入异常，以JSON格式返回错误信息
+        error_result = {
+            "error": "语音合成失败",
+            "details": str(e)
+        }
+        logging.error(f"语音合成失败: {str(e)}")
+        print(json.dumps(error_result, ensure_ascii=False))
         # 以非零退出码退出，C++可以捕获到这个错误
         exit(1)
 
