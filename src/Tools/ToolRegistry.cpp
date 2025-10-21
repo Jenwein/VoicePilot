@@ -19,11 +19,10 @@ namespace Razel {
 			std::cerr << "[ToolRegistry] Error: Tool '" << name << "' not found." << std::endl;
 			return "Error: Tool not found.";
 		}
-	}
+	} 
 
 	nlohmann::json ToolRegistry::GetAllToolDefinitions() const
 	{
-		nlohmann::json definitions;
 		nlohmann::json function_declarations = nlohmann::json::array();
 
 		for (const auto& pair : m_Tools)
@@ -31,8 +30,7 @@ namespace Razel {
 			function_declarations.push_back(pair.second->GetDefinition());
 		}
 
-		definitions["function_declarations"] = function_declarations;
-		return definitions;
+		return function_declarations;
 	}
 
 } // namespace Razel

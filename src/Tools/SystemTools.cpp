@@ -39,7 +39,7 @@ namespace Razel {
 	nlohmann::json GetCurrentTimeTool::GetDefinition() const {
 		return {
 			{"name", "get_current_time"},
-			{"description", "获取本地的当前日期和时间。"},
+			{"description", "Gets the current local date and time."},
 			{"parameters", {
 				{"type", "OBJECT"},
 				{"properties", {}},
@@ -79,17 +79,17 @@ namespace Razel {
 	nlohmann::json WriteFileTool::GetDefinition() const {
 		return {
 			{"name", "write_to_file"},
-			{"description", "将指定的文本内容写入一个文件。如果文件不存在，会创建它；如果文件已存在，会覆盖它。"},
+			{"description", "Writes the specified text content to a file. It creates the file if it does not exist, and overwrites it if it exists."},
 			{"parameters", {
 				{"type", "OBJECT"},
 				{"properties", {
 					{"path", {
 						{"type", "STRING"},
-						{"description", "要写入的文件的完整路径, 例如 'C:/Users/User/Desktop/example.txt'"}
+						{"description", "The full path of the file to write to, e.g., 'C:/Users/User/Desktop/example.txt'"}
 					}},
 					{"content", {
 						{"type", "STRING"},
-						{"description", "要写入文件的文本内容。"}
+						{"description", "The text content to write to the file."}
 					}}
 				}},
 				{"required", {"path", "content"}}
@@ -159,13 +159,13 @@ namespace Razel {
 	nlohmann::json GetKnownFolderPathTool::GetDefinition() const {
 		return {
 			{"name", "get_known_folder_path"},
-			{"description", "获取一个标准系统文件夹的绝对路径。"},
+			{"description", "Gets the absolute path of a standard system folder."},
 			{"parameters", {
 				{"type", "OBJECT"},
 				{"properties", {
 					{"folder_name", {
 						{"type", "STRING"},
-						{"description", "要查询的文件夹的名称。支持的值: 'desktop', 'documents', 'downloads'."}
+						{"description", "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'."}
 					}}
 				}},
 				{"required", {"folder_name"}}
