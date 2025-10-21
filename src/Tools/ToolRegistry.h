@@ -5,7 +5,6 @@
 #include <functional>
 
 #include <nlohmann/json.hpp>
-
 namespace Razel
 {
     // 抽象工具类

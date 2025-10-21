@@ -9,6 +9,8 @@
 
 		files
 		{
+			"vendor/miniaudio/**.h",
+			"vendor/miniaudio/**.cpp",
 			"src/**.h",
 			"src/**.cpp"
 		}
@@ -22,7 +24,8 @@
 			"%{IncludeDir.entt}",
 			"%{IncludeDir.ImGuizmo}",
 			"%{IncludeDir.assimp}",
-			"vendor/miniaudio"
+			"vendor/miniaudio",
+			"vendor/nlohmann"
 		}
 
 		links
@@ -44,27 +47,12 @@
 			runtime "Debug"
 			symbols "on"
 
-			libdirs 
-			{ 
-				"vendor/miniaudio/bin/Debug" 
-			}
-
 		filter "configurations:Release"
 			defines "RZ_RELEASE"
 			runtime "Release"
 			optimize "on"
 
-			libdirs 
-			{ 
-				"vendor/miniaudio/bin/Release" 
-			}
-
 		filter "configurations:Dist"
 			defines "RZ_DIST"
 			runtime "Release"
 			optimize "on"
-
-			libdirs 
-			{ 
-				"vendor/miniaudio/bin/Release" 
-			}
