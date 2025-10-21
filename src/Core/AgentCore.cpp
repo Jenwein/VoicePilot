@@ -5,6 +5,9 @@
 #include <iostream>
 #include <string>
 
+#include "../Tools/ToolRegistry.h"	
+#include "../Tools/SystemTools.h"
+
 namespace Razel
 {
 	AgentCore::AgentCore()
@@ -21,18 +24,15 @@ namespace Razel
 	{
 		if (m_CurrentState == AgentState::Idle)
 		{
-			// --- 开始录音 ---
 			m_CurrentState = AgentState::Listening;
 			m_AudioManager->StartRecording(m_InputAudioPath);
 			std::cout << "[AgentCore] Switched to Listening state." << std::endl;
 		}
 		else if (m_CurrentState == AgentState::Listening)
 		{
-			// --- 停止录音并开始处理 ---
 			m_AudioManager->StopRecording();
 			std::cout << "[AgentCore] Recording stopped." << std::endl;
 
-			// 切换到处理状态并发起处理流程
 			m_CurrentState = AgentState::Processing;
 			std::cout << "[AgentCore] Switched to Processing state." << std::endl;
 			ProcessAudio(m_InputAudioPath);
@@ -48,42 +48,112 @@ namespace Razel
 
 	void AgentCore::ProcessAudio(const std::string& audioFilePath)
 	{
-		std::cout << "[AgentCore] Processing audio file: " << audioFilePath << std::endl;
-
-		// --- "思考"阶段 ---
-
-		// 1. 填充命令结构体
-		Razel::PythonScriptCommand understandCommand;
-		understandCommand.SubCommand = "understand";
-		understandCommand.Args = {
-			{"--file_path", audioFilePath},
-			{"--prompt_text", "根据语音内容选择合适的工具并执行。"}
-		};
-
-		// 2. 使用通用方法构建命令
-		std::string command = m_CommandBuilder.BuildCommand(understandCommand);
-
-		std::cout << "[AgentCore] Executing command: " << command << std::endl;
-
+		std::cout << "[AgentCore] ====== STAGE 1 & 2: UNDERSTAND AND EXECUTE ======" << std::endl;
 		try
 		{
-			// 调用 ProcessUtils::Exec 来执行命令并捕获输出
-			std::string jsonOutput = Razel::ProcessUtils::Exec(command.c_str());
+			// --- STAGE 1: 理解与规划 ---
+			// 1. 从 ToolRegistry 获取所有工具的 Function Declaration JSON
+			nlohmann::json allToolDefs = ToolRegistry::GetInstance().GetAllToolDefinitions();
+			std::string toolDefsJsonString = allToolDefs.dump();
 
+			// 2. 填充命令结构体
+			PythonScriptCommand understandCommand;
+			understandCommand.SubCommand = "understand";
+			understandCommand.Args = {
+				{"--file_path", audioFilePath},
+				{"--prompt_text", toolDefsJsonString}
+			};
+
+			// 3. 构建并执行命令
+			std::string command = m_CommandBuilder.BuildCommand(understandCommand);
+			std::cout << "[AgentCore] Executing 'understand' command..." << std::endl;
+			std::string jsonOutput = ProcessUtils::Exec(command.c_str());
 			std::cout << "[AgentCore] Received JSON from Python: " << jsonOutput << std::endl;
 
-			// TODO: 下一步将在这里解析 jsonOutput, 并根据结果调用 ToolRegistry 中的工具
-			// ...
+			// --- STAGE 2: 执行 ---
 
-			// 模拟处理完成，返回 Idle 状态
+			// 4. 解析 Python 返回的 Function Call JSON
+			nlohmann::json functionCallJson = nlohmann::json::parse(jsonOutput);
+
+			if (functionCallJson.contains("error")) {
+				throw std::runtime_error("Python script returned an error: " + functionCallJson["error"].get<std::string>());
+			}
+
+			std::string toolName = functionCallJson["functionCall"]["name"];
+			nlohmann::json toolArgs = functionCallJson["functionCall"]["args"];
+
+			// 5. 调用 ToolRegistry 执行工具
+			std::cout << "[AgentCore] Executing tool '" << toolName << "' via ToolRegistry." << std::endl;
+			std::string toolResult = ToolRegistry::GetInstance().ExecuteTool(toolName, toolArgs);
+			std::cout << "[AgentCore] Tool execution result: " << toolResult << std::endl;
+
+			// 6. 进入下一个阶段：生成并播报回复
+			GenerateAndSpeakResponse(toolResult);
+
+		}
+		catch (const nlohmann::json::parse_error& e)
+		{
+			std::cerr << "[AgentCore] Error: Failed to parse JSON from Python script. Details: " << e.what() << std::endl;
 			m_CurrentState = AgentState::Idle;
-			std::cout << "[AgentCore] Processing finished. Switched back to Idle state." << std::endl;
 		}
 		catch (const std::runtime_error& e)
 		{
-			std::cerr << "[AgentCore] Error executing Python script: " << e.what() << std::endl;
-			// 发生错误时也要返回 Idle 状态，以便进行下一次尝试
+			std::cerr << "[AgentCore] Error during processing: " << e.what() << std::endl;
+			m_CurrentState = AgentState::Idle; // 发生错误时也要返回 Idle 状态
+		}
+	}
+
+	void AgentCore::RegisterAllTools()
+	{
+		std::cout << "[AgentCore] Registering all tools..." << std::endl;
+		auto& registry = ToolRegistry::GetInstance();
+
+		registry.RegisterTool<GetCurrentTimeTool>("get_current_time");
+		registry.RegisterTool<WriteFileTool>("write_to_file");
+		registry.RegisterTool<GetKnownFolderPathTool>("get_known_folder_path");
+	}
+
+	void AgentCore::GenerateAndSpeakResponse(const std::string& toolResult)
+	{
+		std::cout << "[AgentCore] ====== STAGE 3 & 4: RESPOND AND SPEAK ======" << std::endl;
+
+		try
+		{
+			// --- STAGE 3: 响应生成 ---
+			PythonScriptCommand genResponseCommand;
+			genResponseCommand.SubCommand = "generate_response";
+			genResponseCommand.Args = { {"--result_text", toolResult} };
+
+			std::string command = m_CommandBuilder.BuildCommand(genResponseCommand);
+			std::cout << "[AgentCore] Executing 'generate_response' command..." << std::endl;
+			std::string finalResponseText = ProcessUtils::Exec(command.c_str());
+			std::cout << "[AgentCore] Received final response text: " << finalResponseText << std::endl;
+
+			// --- STAGE 4: 播报 ---
+			m_CurrentState = AgentState::Speaking;
+			PythonScriptCommand ttsCommand;
+			ttsCommand.SubCommand = "tts";
+			ttsCommand.Args = {
+				{"--text", finalResponseText},
+				{"--output_file", m_OutputAudioPath}
+			};
+
+			command = m_CommandBuilder.BuildCommand(ttsCommand);
+			std::cout << "[AgentCore] Executing 'tts' command..." << std::endl;
+			ProcessUtils::Exec(command.c_str()); // 执行TTS，不需要捕获输出
+
+			std::cout << "[AgentCore] Playing response audio..." << std::endl;
+			m_AudioManager->PlayAudioFile(m_OutputAudioPath);
+
+			// 播报完成后，返回 Idle 状态
+			m_CurrentState = AgentState::Idle;
+			std::cout << "[AgentCore] Processing finished. Switched back to Idle state." << std::endl;
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << "[AgentCore] Error in generation/speaking stage: " << e.what() << std::endl;
 			m_CurrentState = AgentState::Idle;
 		}
 	}
+
 }

@@ -26,10 +26,11 @@ namespace Razel {
 		m_ScriptsPath = scriptsPath;
 		std::cout << "[ScriptCommandBuilder] Found scripts directory at: " << m_ScriptsPath << std::endl;
 
+		// TODO:路径可能有更好的处理方式
 #ifdef _WIN32
 		m_PythonExecutablePath = m_ScriptsPath / ".venv" / "Scripts" / "python.exe";
 #else
-		m_PythonExecutablePath = m_ScriptsPath / "venv" / "bin" / "python";
+		m_PythonExecutablePath = m_ScriptsPath / ".venv" / "bin" / "python";
 #endif
 
 		if (!std::filesystem::exists(m_PythonExecutablePath)) {
@@ -41,6 +42,7 @@ namespace Razel {
 
 	std::string ScriptCommandBuilder::BuildCommand(const PythonScriptCommand& commandInfo)
 	{
+		// TODO:当前的拼接无法正常运行
 		std::filesystem::path scriptPath = m_ScriptsPath / "ai_service.py";
 		std::stringstream cmd;
 
