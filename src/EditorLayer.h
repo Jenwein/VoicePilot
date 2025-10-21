@@ -39,6 +39,7 @@ namespace Razel {
 
 		void OnDuplicateEntity();
 
+		void UpdateVoiceAssistantModel(float ts);
 		// UI Panels
 		void UI_ToolBars();
 	private:
@@ -86,7 +87,17 @@ namespace Razel {
 		// Editor resources
 		Ref<Texture2D> m_IconPlay, m_IconStop;
 
-
 		Scope<AgentCore> m_AgentCore;
+		Entity m_VoiceAssistantEntity;
+
+		// Voice assistant model animation variables
+		float m_IdleRotation = 0.0f;
+		glm::vec3 m_ListeningRotation = { 0.0f, 0.0f, 0.0f };
+		glm::vec3 m_TargetListeningRotation = { -20.0f, 30.0f, 0.0f }; // 向右向下偏转的角度
+		glm::vec3 m_ProcessingRotationSpeed = { 0.0f, 150.0f, 0.0f }; // 快速转动速度
+		glm::vec3 m_SpeakingRotation = { 0.0f, 0.0f, 0.0f };
+		float m_SpeakingBobIntensity = 15.0f; // 上下摆动幅度
+		float m_SpeakingBobSpeed = 5.0f; // 摆动速度
+		float m_SpeakingBobTime = 0.0f;
 	};
 }

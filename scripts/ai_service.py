@@ -161,7 +161,7 @@ def handle_tts(args):
         #    API 参考: Page 189 (GenerateContentConfig), Page 399 (SpeechConfig)
         print("-- 正在向 Gemini TTS API 发送请求...")
         response = client.models.generate_content(
-           model="gemini-1.5-flash-preview-tts-001", # 使用最新的TTS模型
+           model="gemini-2.5-flash-preview-tts", # 使用最新的TTS模型
            contents=args.text,
            config=types.GenerateContentConfig(
               response_modalities=["AUDIO"],

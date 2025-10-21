@@ -43,6 +43,19 @@ namespace Razel {
 
 		m_AgentCore = CreateScope<AgentCore>();
 		//m_AgentCore->Init();
+
+		// TODO:创建语音助手的3D模型实体
+		//m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
+		// ModelComponent modelComp;
+		// modelComp.FilePath = "assets/models/bunny/bunny.obj";
+		// modelComp.FlipUVs = false;
+		// modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
+		// auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
+		// 
+		// auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
+		// //transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
+		// transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
+		// transformComponent.Scale = { 3.0f, 3.0f, 3.0f };
 	}
 
 	void EditorLayer::OnDetach()
@@ -55,6 +68,9 @@ namespace Razel {
 		RZ_PROFILE_FUNCTION();
 
 		m_AgentCore->OnUpdate();
+
+		//TODO:启用语音助手3D模型的更新,当前的py调用是同步阻塞的,所以更新无法进行,之后考虑异步的进行py的调用与结果获取
+		//UpdateVoiceAssistantModel(ts);
 
 		// 当帧缓冲大小与视口大小不同时,且视口大小不为0
 		// 因为当前的流程中,先OnUpdate,渲染,填充帧缓冲,解绑,然后在OnImGuiRenderer中去调整视口大小,此时会导致纹理为空,所以有一个黑色的闪烁
@@ -441,6 +457,60 @@ namespace Razel {
 	{
 		if (m_SceneState != SceneState::Edit)
 			return;
+	}
+
+	void EditorLayer::UpdateVoiceAssistantModel(float ts)
+	{
+		if (!m_VoiceAssistantEntity.IsValid())
+			return;
+
+		auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
+		AgentState currentState = m_AgentCore->GetCurrentState();
+
+		switch (currentState)
+		{
+		case AgentState::Idle:
+		{
+			// 水平缓慢转动表示空闲状态
+			m_IdleRotation += ts * 20.0f; // 每秒转动20度
+			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
+			break;
+		}
+		case AgentState::Listening:
+		{
+			// 从当前状态变换到向右向下偏转角度
+			// 使用插值使变换更平滑
+			glm::vec3 currentRotation = transformComponent.Rotation;
+			glm::vec3 targetRotation = m_TargetListeningRotation;
+
+			// 插值计算
+			glm::vec3 delta = targetRotation - currentRotation;
+			float interpolationSpeed = 5.0f; // 插值速度
+
+			if (glm::length(delta) > 0.1f) {
+				transformComponent.Rotation += delta * ts * interpolationSpeed;
+			}
+			else {
+				transformComponent.Rotation = targetRotation;
+			}
+			break;
+		}
+		case AgentState::Processing:
+		{
+			// 快速转动
+			m_IdleRotation += ts * 100.0f; // 每秒转动100度（比空闲状态快5倍）
+			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
+			break;
+		}
+		case AgentState::Speaking:
+		{
+			// 沿着x轴一上一下旋转
+			m_SpeakingBobTime += ts * m_SpeakingBobSpeed;
+			float bobAngle = sin(m_SpeakingBobTime) * m_SpeakingBobIntensity;
+			transformComponent.Rotation = glm::vec3(bobAngle, 0.0f, 0.0f);
+			break;
+		}
+		}
 	}
 
 }
