@@ -239,7 +239,7 @@ namespace Razel {
 		ImGui::Begin("TODO");
 		if (ImGui::Button("test_ExecPython"))
 		{
-
+			m_AgentCore->ProcessAudio("input.wav");
 		}
 		
 		//TODO:

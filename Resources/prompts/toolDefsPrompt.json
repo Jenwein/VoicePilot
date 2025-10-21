@@ -1,0 +1,48 @@
+[
+    {
+        "description": "Gets the current local date and time.",
+        "name": "get_current_time",
+        "parameters": {
+            "properties": null,
+            "required": [],
+            "type": "OBJECT"
+        }
+    },
+    {
+        "description": "Gets the absolute path of a standard system folder.",
+        "name": "get_known_folder_path",
+        "parameters": {
+            "properties": {
+                "folder_name": {
+                    "description": "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'.",
+                    "type": "STRING"
+                }
+            },
+            "required": [
+                "folder_name"
+            ],
+            "type": "OBJECT"
+        }
+    },
+    {
+        "description": "Writes the specified text content to a file. It creates the file if it does not exist, and overwrites it if it exists.",
+        "name": "write_to_file",
+        "parameters": {
+            "properties": {
+                "content": {
+                    "description": "The text content to write to the file.",
+                    "type": "STRING"
+                },
+                "path": {
+                    "description": "The full path of the file to write to, e.g., 'C:/Users/User/Desktop/example.txt'",
+                    "type": "STRING"
+                }
+            },
+            "required": [
+                "path",
+                "content"
+            ],
+            "type": "OBJECT"
+        }
+    }
+]

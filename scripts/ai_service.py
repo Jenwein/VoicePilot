@@ -17,58 +17,81 @@ except KeyError:
 
 def handle_understand(args):
     """
-    处理“理解与规划”任务 (Stage 1)
-    接收音频和System Prompt，返回Function Call JSON
+    处理"理解与规划"任务 (Stage 1)
+    接收音频和System Prompt文件路径，返回Function Call JSON
     """
-    print(f'-- Python 开始处理理解任务: 文件路径="{args.file_path}"')
+    print(f'-- Python 开始处理理解任务: 文件路径="{args.file_path}", 工具定义文件="{args.prompt_text}"')
 
     try:
-        # 1. 上传音频文件
+        # 1. 读取工具定义文件
+        print("-- 正在读取工具定义文件...")
+        with open(args.prompt_text, 'r', encoding='utf-8') as f:
+            function_declarations_list = json.load(f)
+        print("-- 工具定义文件读取成功")
+
+        # 2. 上传音频文件
         # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 29, client.files.upload)
         print("-- 正在上传音频文件...")
         audio_file = client.files.upload(file=args.file_path)
         print(f"-- 音频文件上传成功: {audio_file.name}")
 
-        # 2. 准备 Tools 定义
-        #    prompt_text 传入的是包含 function_declarations 的JSON字符串
+        # 3. 准备 Tools 定义
+        #    prompt_text 现在是包含 function_declarations 的JSON文件路径
         # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 190, GenerateContentConfig)
-        tool_definitions_json = json.loads(args.prompt_text)
-        tools = types.Tool(function_declarations=tool_definitions_json.get("function_declarations", []))
+        tools = types.Tool(function_declarations=function_declarations_list)
         config = types.GenerateContentConfig(tools=[tools])
-
-        # 3. 调用模型发起请求
+        # 4. 调用模型发起请求
         #    我们将 "请根据音频内容执行操作" 作为引导模型的指令
         # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
+        instructional_prompt = """
+        请仔细听取音频内容，并从可用的工具定义中选择最合适的工具来执行用户的请求。
+
+        如果您能明确理解用户的意图并找到匹配的工具，请使用该工具执行操作。
+        
+        如果用户的请求不明确或与任何可用工具的功能都不匹配，请返回一个明确的错误信息，说明具体原因，例如：
+        - 音频质量问题（如噪音太大、语音不清晰等）
+        - 请求内容不完整或不明确
+        - 没有找到匹配的工具功能
+        
+        请不要在不确定的情况下猜测或强行调用工具。
+        """
         print("-- 正在向 Gemini API 发送请求...")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=["请根据音频内容执行操作", audio_file],
+            contents=[instructional_prompt, audio_file],
             config=config,
         )
-
-        # 4. 从 response 中提取 function call 并格式化为 JSON
+        # 5. 从 response 中提取 function call 并格式化为 JSON
         #    参考 FunctionCallingexam.py
-        if response.candidates and response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
-            function_call = response.candidates[0].content.parts[0].function_call
-            
-            # 使用 json.dumps 将 function_call 对象转换为 JSON 字符串
-            # function_call.args 是一个 "Struct" 对象，需要先转换为 dict
-            result = {
-                "functionCall": {
-                    "name": function_call.name,
-                    "args": dict(function_call.args)
+        if response.candidates and response.candidates[0].content.parts:
+            # 检查是否有 function call
+            if hasattr(response.candidates[0].content.parts[0], 'function_call'):
+                function_call = response.candidates[0].content.parts[0].function_call
+                result = {
+                    "functionCall": {
+                        "name": function_call.name,
+                        "args": dict(function_call.args)
+                    }
                 }
-            }
-            # 打印最终的 JSON 字符串，供C++程序读取
-            print(json.dumps(result, ensure_ascii=False))
+                print(json.dumps(result, ensure_ascii=False))
+            else:
+                # 获取模型的文本响应
+                error_message = response.candidates[0].content.parts[0].text
+                error_response = {
+                    "error": "未能识别出明确的函数调用指令",
+                    "details": error_message or "无法理解用户请求"
+                }
+                print(json.dumps(error_response, ensure_ascii=False))
         else:
-            # 如果模型没有返回 function_call，可能意味着音频内容不明确或与工具无关
-            print(json.dumps({"error": "未能识别出明确的函数调用指令。", "details": response.text or "无详细信息"}))
+            print(json.dumps({
+                "error": "模型未返回有效响应",
+                "details": "服务器返回了空响应"
+            }, ensure_ascii=False))
 
-    except FileNotFoundError:
-        print(json.dumps({"error": f"音频文件未找到: {args.file_path}"}))
+    except FileNotFoundError as e:
+        print(json.dumps({"error": f"文件未找到: {str(e)}"}))
     except json.JSONDecodeError:
-        print(json.dumps({"error": "Tool 定义 (prompt_text) 不是有效的JSON格式。"}))
+        print(json.dumps({"error": "Tool 定义文件不是有效的JSON格式。"}))
     except Exception as e:
         # 捕获其他可能的API调用异常或处理异常
         print(json.dumps({"error": f"处理过程中发生未知错误: {str(e)}"}))
@@ -183,7 +206,7 @@ def main():
     # 子命令: understand
     parser_understand = subparsers.add_parser('understand', help='从音频理解用户意图并规划操作。')
     parser_understand.add_argument('--file_path', type=str, required=True, help='输入的音频文件路径。')
-    parser_understand.add_argument('--prompt_text', type=str, required=True, help='包含Tools定义的System Prompt。')
+    parser_understand.add_argument('--prompt_text', type=str, required=True, help='包含Tools定义的JSON文件路径。')
     parser_understand.set_defaults(func=handle_understand)
 
     # 子命令: generate_response

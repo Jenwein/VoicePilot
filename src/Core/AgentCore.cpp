@@ -14,6 +14,8 @@ namespace Razel
 		: m_CurrentState(AgentState::Idle)
 	{
 		m_AudioManager = CreateScope<AudioManager>();
+		RegisterAllTools();
+		SaveToolDefinitionsToFile();
 	}
 
 	AgentCore::~AgentCore()	
@@ -52,24 +54,32 @@ namespace Razel
 		try
 		{
 			// --- STAGE 1: 理解与规划 ---
-			// 1. 从 ToolRegistry 获取所有工具的 Function Declaration JSON
-			nlohmann::json allToolDefs = ToolRegistry::GetInstance().GetAllToolDefinitions();
-			std::string toolDefsJsonString = allToolDefs.dump();
-
-			// 2. 填充命令结构体
 			PythonScriptCommand understandCommand;
 			understandCommand.SubCommand = "understand";
 			understandCommand.Args = {
 				{"--file_path", audioFilePath},
-				{"--prompt_text", toolDefsJsonString}
+				{"--prompt_text", m_ToolDefsFilePath}
 			};
 
 			// 3. 构建并执行命令
 			std::string command = m_CommandBuilder.BuildCommand(understandCommand);
-			std::cout << "[AgentCore] Executing 'understand' command..." << std::endl;
-			std::string jsonOutput = ProcessUtils::Exec(command.c_str());
-			std::cout << "[AgentCore] Received JSON from Python: " << jsonOutput << std::endl;
+			std::cout << "[AgentCore] Executing 'understand' command:\n" << command<< std::endl;
+			std::string output = ProcessUtils::Exec(command.c_str());
+			std::cout << "[AgentCore] Received JSON from Python: " << output << std::endl;
 
+			std::string jsonOutput;
+			size_t firstBrace = output.find('{');
+			size_t lastBrace = output.rfind('}');
+
+			if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
+				jsonOutput = output.substr(firstBrace, lastBrace - firstBrace + 1);
+			}
+			else {
+				jsonOutput = output;
+			}
+
+			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
+			
 			// --- STAGE 2: 执行 ---
 
 			// 4. 解析 Python 返回的 Function Call JSON
@@ -126,8 +136,24 @@ namespace Razel
 
 			std::string command = m_CommandBuilder.BuildCommand(genResponseCommand);
 			std::cout << "[AgentCore] Executing 'generate_response' command..." << std::endl;
-			std::string finalResponseText = ProcessUtils::Exec(command.c_str());
-			std::cout << "[AgentCore] Received final response text: " << finalResponseText << std::endl;
+			std::string output = ProcessUtils::Exec(command.c_str());
+			std::cout << "[AgentCore] Received output from Python: " << output << std::endl;
+
+			std::string jsonOutput;
+			size_t firstBrace = output.find('{');
+			size_t lastBrace = output.rfind('}');
+
+			if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
+				jsonOutput = output.substr(firstBrace, lastBrace - firstBrace + 1);
+			}
+			else {
+				// 如果没有找到有效的JSON结构，使用整个输出
+				jsonOutput = output;
+			}
+
+			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
+
+			std::string finalResponseText = jsonOutput;
 
 			// --- STAGE 4: 播报 ---
 			m_CurrentState = AgentState::Speaking;
@@ -155,5 +181,28 @@ namespace Razel
 			m_CurrentState = AgentState::Idle;
 		}
 	}
+
+	void AgentCore::SaveToolDefinitionsToFile()
+	{
+		try
+		{
+			nlohmann::json allToolDefs = ToolRegistry::GetInstance().GetAllToolDefinitions();
+			std::ofstream file(m_ToolDefsFilePath);
+			if (file.is_open())
+			{
+				file << allToolDefs.dump(4);
+				file.close();
+				std::cout << "[AgentCore] Tool definitions saved to " << m_ToolDefsFilePath << std::endl;
+			}
+			else
+			{
+				std::cerr << "[AgentCore] Error: Could not open file " << m_ToolDefsFilePath << " for writing." << std::endl;
+			}
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << "[AgentCore] Error saving tool definitions: " << e.what() << std::endl;
+		}
+	}	
 
 }
