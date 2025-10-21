@@ -1,6 +1,5 @@
 #include "EditorLayer.h"
 #include <imgui/imgui.h>
-//#include <miniaudio.h>	//音频
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -330,6 +329,12 @@ namespace Razel {
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
+		// 例如, 我们用 'R' 键来开始/停止录音
+		if (e.GetKeyCode() == Key::R && e.GetRepeatCount() == 0) 
+		{
+			m_AgentCore->ToggleRecordingAndProcess();
+			return true; // 事件已处理
+		}
 		return false;
 	}
 

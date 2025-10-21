@@ -22,13 +22,12 @@
 			"%{IncludeDir.entt}",
 			"%{IncludeDir.ImGuizmo}",
 			"%{IncludeDir.assimp}",
-			"vendor/miniaudio/include"
+			"vendor/miniaudio"
 		}
 
 		links
 		{
 			"Razel",
-			"miniaudio.lib"
 		}
 
 		filter "system:windows"
