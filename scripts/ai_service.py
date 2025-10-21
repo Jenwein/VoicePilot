@@ -1,212 +1,203 @@
+# ai_service.py template
 import os
 import argparse
 import json
-
-# µ¼Èë Google AI ºÍ Google Cloud µÄ¿â
+import wave
 from google import genai
+from google.genai import types
 
-# --- 1. ÅäÖÃ ---
+# --- 1. é…ç½® ---
 try:
-    # ÅäÖÃ Gemini API Key
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    client = genai.Client()
 except KeyError:
-    print("´íÎó: ÇëÏÈÉèÖÃ GEMINI_API_KEY »·¾³±äÁ¿¡£")
+    print("é”™è¯¯: è¯·å…ˆè®¾ç½® GEMINI_API_KEY ç¯å¢ƒå˜é‡ã€‚")
     exit(1)
 
-# --- 2. ÈÎÎñ´¦Àíº¯Êı ---
+# --- 2. ä»»åŠ¡å¤„ç†å‡½æ•° ---
 
 def handle_understand(args):
     """
-    ´¦Àí¡°Àí½âÓë¹æ»®¡±ÈÎÎñ (Stage 1)
-    ½ÓÊÕÒôÆµºÍSystem Prompt£¬·µ»ØFunction Call JSON
+    å¤„ç†â€œç†è§£ä¸è§„åˆ’â€ä»»åŠ¡ (Stage 1)
+    æ¥æ”¶éŸ³é¢‘å’ŒSystem Promptï¼Œè¿”å›Function Call JSON
     """
-    print(f'-- Python ÊÕµ½Àí½âÈÎÎñ: ÎÄ¼şÂ·¾¶="{args.file_path}", Prompt³¤¶È={len(args.prompt_text)}')
-    
-    try:
-        # 1. ÉÏ´«ÒôÆµÎÄ¼ş
-        # ×¢Òâ: Gemini API Ä¿Ç°¶ÔÒôÆµÊ±³¤ºÍ¸ñÊ½ÓĞÒ»¶¨ÒªÇó£¬Çë²Î¿¼¹Ù·½ÎÄµµ
-        print("-- ÕıÔÚÉÏ´«ÒôÆµÎÄ¼ş...")
-        audio_file = genai.upload_file(path=args.file_path)
-        print(f"-- ÒôÆµÎÄ¼şÉÏ´«³É¹¦: {audio_file.display_name}")
+    print(f'-- Python å¼€å§‹å¤„ç†ç†è§£ä»»åŠ¡: æ–‡ä»¶è·¯å¾„="{args.file_path}"')
 
-        # 2. ×¼±¸ÄãµÄ Tools ¶¨Òå
-        # ÕâÊÇ Function Calling µÄºËĞÄ¡£ÄãĞèÒªÔÚÕâÀï¶¨ÒåËùÓĞ C++ ¶ËÄÜÖ´ĞĞµÄ¹¤¾ß¡£
-        # ÕâÀïÎÒÃÇ¶¨ÒåÒ»¸öÊ¾Àı¹¤¾ß 'get_current_time'
-        my_tools = [
-            {
-                "name": "get_current_time",
-                "description": "»ñÈ¡µ±Ç°±¾µØÊ±¼ä¡£",
-                "parameters": {} # Õâ¸öº¯ÊıÃ»ÓĞ²ÎÊı
-            },
-            {
-                "name": "open_application",
-                "description": "¸ù¾İÖ¸¶¨µÄÃû³Æ´ò¿ªÒ»¸öÓ¦ÓÃ³ÌĞò¡£",
-                "parameters": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "app_name": {
-                            "type": "STRING",
-                            "description": "Òª´ò¿ªµÄÓ¦ÓÃ³ÌĞòµÄÃû³Æ£¬ÀıÈç 'notepad.exe' »ò 'calculator'¡£"
-                        }
-                    },
-                    "required": ["app_name"]
+    try:
+        # 1. ä¸Šä¼ éŸ³é¢‘æ–‡ä»¶
+        # API å‚è€ƒ: Submodules - Google Gen AI SDK documentation.pdf (Page 29, client.files.upload)
+        print("-- æ­£åœ¨ä¸Šä¼ éŸ³é¢‘æ–‡ä»¶...")
+        audio_file = client.files.upload(file=args.file_path)
+        print(f"-- éŸ³é¢‘æ–‡ä»¶ä¸Šä¼ æˆåŠŸ: {audio_file.name}")
+
+        # 2. å‡†å¤‡ Tools å®šä¹‰
+        #    prompt_text ä¼ å…¥çš„æ˜¯åŒ…å« function_declarations çš„JSONå­—ç¬¦ä¸²
+        # API å‚è€ƒ: Submodules - Google Gen AI SDK documentation.pdf (Page 190, GenerateContentConfig)
+        tool_definitions_json = json.loads(args.prompt_text)
+        tools = types.Tool(function_declarations=tool_definitions_json.get("function_declarations", []))
+        config = types.GenerateContentConfig(tools=[tools])
+
+        # 3. è°ƒç”¨æ¨¡å‹å‘èµ·è¯·æ±‚
+        #    æˆ‘ä»¬å°† "è¯·æ ¹æ®éŸ³é¢‘å†…å®¹æ‰§è¡Œæ“ä½œ" ä½œä¸ºå¼•å¯¼æ¨¡å‹çš„æŒ‡ä»¤
+        # API å‚è€ƒ: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
+        print("-- æ­£åœ¨å‘ Gemini API å‘é€è¯·æ±‚...")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=["è¯·æ ¹æ®éŸ³é¢‘å†…å®¹æ‰§è¡Œæ“ä½œ", audio_file],
+            config=config,
+        )
+
+        # 4. ä» response ä¸­æå– function call å¹¶æ ¼å¼åŒ–ä¸º JSON
+        #    å‚è€ƒ FunctionCallingexam.py
+        if response.candidates and response.candidates[0].content.parts and response.candidates[0].content.parts[0].function_call:
+            function_call = response.candidates[0].content.parts[0].function_call
+            
+            # ä½¿ç”¨ json.dumps å°† function_call å¯¹è±¡è½¬æ¢ä¸º JSON å­—ç¬¦ä¸²
+            # function_call.args æ˜¯ä¸€ä¸ª "Struct" å¯¹è±¡ï¼Œéœ€è¦å…ˆè½¬æ¢ä¸º dict
+            result = {
+                "functionCall": {
+                    "name": function_call.name,
+                    "args": dict(function_call.args)
                 }
             }
-            # ÔÚÕâÀï¿ÉÒÔ¼ÌĞøÌí¼Ó¸ü¶à¹¤¾ßµÄ¶¨Òå...
-        ]
-
-        # 3. ³õÊ¼»¯Ä£ĞÍ
-        # ÎÒÃÇÊ¹ÓÃÖ§³Ö¶àÄ£Ì¬ºÍ¹¤¾ßµ÷ÓÃµÄ gemini-1.5-pro-latest Ä£ĞÍ
-        model = genai.GenerativeModel(
-            model_name='gemini-1.5-pro-latest',
-            tools=my_tools,
-            system_instruction=args.prompt_text  # System Prompt ´ÓÃüÁîĞĞ´«Èë
-        )
-        
-        # ÎªÁË°²È«£¬ÆÁ±ÎÒ»Ğ©¿ÉÄÜ²»Ïà¹ØµÄÄÚÈİ
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
-        # 4. ·¢ÆğÇëÇó
-        # ½«ÓÃ»§µÄÓïÒô£¨×÷ÎªÒôÆµÎÄ¼ş£©ºÍ System Prompt Ò»Í¬·¢ËÍ¸øÄ£ĞÍ
-        print("-- ÕıÔÚÏò Gemini API ·¢ËÍÇëÇó...")
-        response = model.generate_content(
-            [audio_file],
-            safety_settings=safety_settings,
-        )
-
-        # 5. ´Ó response ÖĞÌáÈ¡ function call ²¢¸ñÊ½»¯Îª JSON
-        if response.candidates and response.candidates[0].content.parts:
-            part = response.candidates[0].content.parts[0]
-            if part.function_call:
-                function_call = part.function_call
-                
-                # ½« `google.protobuf.struct_pb2.Struct` ×ª»»Îª Python ×Öµä
-                args_dict = {key: value for key, value in function_call.args.items()}
-                
-                # ¹¹½¨×îÖÕµÄ JSON ½á¹¹
-                output_json = {
-                    "functionCall": {
-                        "name": function_call.name,
-                        "args": args_dict
-                    }
-                }
-                print(json.dumps(output_json, ensure_ascii=False))
-            else:
-                 print('{"error": "No function call found in response."}')
+            # æ‰“å°æœ€ç»ˆçš„ JSON å­—ç¬¦ä¸²ï¼Œä¾›C++ç¨‹åºè¯»å–
+            print(json.dumps(result, ensure_ascii=False))
         else:
-            print('{"error": "Invalid response structure."}')
-            
+            # å¦‚æœæ¨¡å‹æ²¡æœ‰è¿”å› function_callï¼Œå¯èƒ½æ„å‘³ç€éŸ³é¢‘å†…å®¹ä¸æ˜ç¡®æˆ–ä¸å·¥å…·æ— å…³
+            print(json.dumps({"error": "æœªèƒ½è¯†åˆ«å‡ºæ˜ç¡®çš„å‡½æ•°è°ƒç”¨æŒ‡ä»¤ã€‚", "details": response.text or "æ— è¯¦ç»†ä¿¡æ¯"}))
+
+    except FileNotFoundError:
+        print(json.dumps({"error": f"éŸ³é¢‘æ–‡ä»¶æœªæ‰¾åˆ°: {args.file_path}"}))
+    except json.JSONDecodeError:
+        print(json.dumps({"error": "Tool å®šä¹‰ (prompt_text) ä¸æ˜¯æœ‰æ•ˆçš„JSONæ ¼å¼ã€‚"}))
     except Exception as e:
-        print(f'{{"error": "An error occurred: {str(e)}"}}')
+        # æ•è·å…¶ä»–å¯èƒ½çš„APIè°ƒç”¨å¼‚å¸¸æˆ–å¤„ç†å¼‚å¸¸
+        print(json.dumps({"error": f"å¤„ç†è¿‡ç¨‹ä¸­å‘ç”ŸæœªçŸ¥é”™è¯¯: {str(e)}"}))
 
 
 def handle_generate_response(args):
     """
-    ´¦Àí¡°ÏìÓ¦Éú³É¡±ÈÎÎñ (Stage 3)
-    ½ÓÊÕÖ´ĞĞ½á¹û£¬·µ»Ø×ÔÈ»ÓïÑÔ»Ø¸´
+    å¤„ç†â€œå“åº”ç”Ÿæˆâ€ä»»åŠ¡ (Stage 3)
+    æ¥æ”¶æ‰§è¡Œç»“æœï¼Œè¿”å›è‡ªç„¶è¯­è¨€å›å¤
     """
-    print(f'-- Python ÊÕµ½Éú³ÉÏìÓ¦ÈÎÎñ: Ö´ĞĞ½á¹û="{args.result_text}"')
-    
-    try:
-        # 1. ³õÊ¼»¯Ä£ĞÍ
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
-        
-        # 2. ¹¹½¨ Prompt
-        # Ö¸µ¼Ä£ĞÍ¸ù¾İ¹¤¾ßµÄÖ´ĞĞ½á¹û£¬Éú³ÉÒ»¾ä×ÔÈ»¡¢ÓÑºÃ¡¢¼ò¶ÌµÄÖĞÎÄ»Ø¸´¡£
-        prompt = f"""
-        ÄãÊÇÒ»¸öAIÓïÒôÖúÊÖ¡£Ò»¸ö¹¤¾ß¸Õ¸ÕÔÚÓÃ»§µÄµçÄÔÉÏ±»Ö´ĞĞÁË£¬ÕâÊÇËüµÄÖ´ĞĞ½á¹û×Ö·û´®: "{args.result_text}"
-        Çë¸ù¾İÕâ¸ö½á¹û£¬Éú³ÉÒ»¾ä×ÔÈ»¡¢ÓÑºÃ¡¢¼ò¶ÌµÄÖĞÎÄ»Ø¸´¸øÓÃ»§¡£
-        - Èç¹û½á¹û±íÊ¾³É¹¦£¬¾ÍËµ²Ù×÷³É¹¦ÁË¡£
-        - Èç¹û½á¹ûÊÇ¾ßÌåĞÅÏ¢£¨±ÈÈçÊ±¼ä£©£¬¾ÍÖ±½Ó¸æÖªĞÅÏ¢¡£
-        - Èç¹û½á¹ûÊÇ´íÎóĞÅÏ¢£¬¾Í°²¸§ÓÃ»§²¢¸æÖª²Ù×÷Ê§°Ü¡£
-        ÄãµÄ»Ø´ğÓ¦¸ÃÖ±½Ó¾ÍÊÇ»Ø¸´±¾Éí£¬²»Òª°üº¬ÈÎºÎ¶îÍâµÄÇ°×º»ò½âÊÍ¡£
-        """
-        
-        # 3. ·¢ÆğÇëÇó²¢»ñÈ¡»Ø¸´
-        print("-- ÕıÔÚÇëÇóÉú³É×ÔÈ»ÓïÑÔ»Ø¸´...")
-        response = model.generate_content(prompt)
-        
-        # 4. ´òÓ¡»Ø¸´
-        print(response.text.strip())
-        
-    except Exception as e:
-        # Èç¹û³ö´í£¬·µ»ØÒ»¸öÍ¨ÓÃµÄ´íÎó»Ø¸´
-        print(f"±§Ç¸£¬ÎÒºÃÏñÓöµ½ÁËÒ»µãÎÊÌâ¡£´íÎó: {str(e)}")
+    print(f'-- Python æ”¶åˆ°ç”Ÿæˆå“åº”ä»»åŠ¡: æ‰§è¡Œç»“æœ="{args.result_text}"')
 
+    try:
+        # 1. æ„å»º Prompt
+        #    è¿™ä¸ª prompt æŒ‡å¯¼æ¨¡å‹å°†ä¸€ä¸ªç¨‹åºæ‰§è¡Œç»“æœï¼ˆå¯èƒ½æ˜¯JSONï¼Œä¹Ÿå¯èƒ½æ˜¯ä¸€ä¸ªç®€å•çš„å­—ç¬¦ä¸²ï¼‰
+        #    è½¬æ¢æˆä¸€å¥è‡ªç„¶æµç•…çš„ä¸­æ–‡å£è¯­å›å¤ã€‚
+        prompt = f"""
+        ä½ æ˜¯ä¸€ä¸ªæ™ºèƒ½è¯­éŸ³åŠ©æ‰‹ã€‚åˆšæ‰ä½ çš„ä¸€ä¸ªå·¥å…·æ‰§è¡Œäº†ä¸€ä¸ªæ“ä½œï¼Œæ“ä½œçš„ç»“æœæ˜¯ï¼š
+        ---
+        {args.result_text}
+        ---
+        è¯·æ ¹æ®è¿™ä¸ªç»“æœï¼Œç”Ÿæˆä¸€å¥ç®€çŸ­ã€å‹å¥½ã€å£è¯­åŒ–çš„ä¸­æ–‡å›å¤ï¼Œå‘ŠçŸ¥ç”¨æˆ·æ“ä½œçš„ç»“æœã€‚è¯·ç›´æ¥ç»™å‡ºæœ€ç»ˆçš„å›å¤ï¼Œä¸è¦åŒ…å«ä»»ä½•é¢å¤–çš„è§£é‡Šæˆ–å‰ç¼€ã€‚
+        """
+
+        # 2. è°ƒç”¨æ¨¡å‹å‘èµ·è¯·æ±‚
+        # API å‚è€ƒ: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
+        print("-- æ­£åœ¨å‘ Gemini API å‘é€è¯·æ±‚ä»¥ç”Ÿæˆè‡ªç„¶è¯­è¨€å›å¤...")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        # 3. æå–å¹¶æ‰“å°å›å¤
+        if response.text:
+            # æ¸…ç†ä¸€ä¸‹å¯èƒ½çš„å‰åç©ºç™½
+            final_response = response.text.strip()
+            print(final_response)
+        else:
+            # å¦‚æœAPIæ²¡æœ‰è¿”å›æ–‡æœ¬ï¼Œæä¾›ä¸€ä¸ªå¤‡ç”¨å›å¤
+            print(f"æ“ä½œå·²å®Œæˆï¼Œç»“æœæ˜¯ï¼š{args.result_text}ã€‚")
+
+    except Exception as e:
+        # æ•è·APIè°ƒç”¨å¼‚å¸¸æˆ–å¤„ç†å¼‚å¸¸ï¼Œå¹¶è¿”å›ä¸€ä¸ªå¯¹ç”¨æˆ·å‹å¥½çš„é”™è¯¯ä¿¡æ¯
+        print(f"æŠ±æ­‰ï¼Œæˆ‘åœ¨æ€»ç»“ç»“æœæ—¶é‡åˆ°äº†ç‚¹éº»çƒ¦ã€‚æ“ä½œå·²ç»æ‰§è¡Œï¼Œå…¶ç»“æœæ˜¯ï¼š{args.result_text}ã€‚")
+        # æ‚¨ä¹Ÿå¯ä»¥å°†è¯¦ç»†é”™è¯¯æ‰“å°åˆ° stderr ä¾›è°ƒè¯•
+        import sys
+        print(f"Error in handle_generate_response: {e}", file=sys.stderr)
+
+def write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_width: int = 2, rate: int = 24000):
+    """å°†åŸå§‹PCMæ•°æ®å†™å…¥WAVæ–‡ä»¶"""
+    with wave.open(filename, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(rate)
+        wf.writeframes(pcm_data)
 
 def handle_tts(args):
     """
-    ´¦Àí¡°ÓïÒôºÏ³É¡±ÈÎÎñ (Stage 4)
-    ½ÓÊÕÎÄ±¾£¬±£´æÎªÒôÆµÎÄ¼ş
+    å¤„ç†â€œè¯­éŸ³åˆæˆâ€ä»»åŠ¡ (Stage 4)
+    æ¥æ”¶æ–‡æœ¬ï¼Œä¿å­˜ä¸ºéŸ³é¢‘æ–‡ä»¶
     """
-    print(f'-- Python ÊÕµ½TTSÈÎÎñ: ÎÄ±¾="{args.text}", Êä³öµ½="{args.output_file}"')
-    
+    print(f'-- Python æ”¶åˆ°TTSä»»åŠ¡: æ–‡æœ¬="{args.text}", è¾“å‡ºåˆ°="{args.output_file}"')
+
     try:
-        # 1. ÊµÀı»¯Ò»¸ö¿Í»§¶Ë
-        client = texttospeech.TextToSpeechClient()
-
-        # 2. ÉèÖÃÒªºÏ³ÉµÄÊäÈëÎÄ±¾
-        synthesis_input = texttospeech.SynthesisInput(text=args.text)
-
-        # 3. ¹¹½¨ÓïÒôÇëÇó£¬Ñ¡ÔñÓïÑÔ´úÂë ("en-US") ºÍÒ»¸öÏëÒªµÄÓïÒô
-        # ¸ü¶àÓïÒôÑ¡ÏîÇë²Î¿¼: https://cloud.google.com/text-to-speech/docs/voices
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="cmn-CN",  # ÖĞÎÄ-ÆÕÍ¨»°
-            name="cmn-CN-Wavenet-B", # Ò»¸öÌıÆğÀ´²»´íµÄÖĞÎÄÄĞÉù
-            ssml_gender=texttospeech.SsmlVoiceGender.MALE,
+        # 1. è°ƒç”¨ TTS æ¨¡å‹
+        #    å‚è€ƒ TTSexam.py å’Œ Submodules - Google Gen AI SDK documentation.pdf
+        #    API å‚è€ƒ: Page 189 (GenerateContentConfig), Page 399 (SpeechConfig)
+        print("-- æ­£åœ¨å‘ Gemini TTS API å‘é€è¯·æ±‚...")
+        response = client.models.generate_content(
+           model="gemini-1.5-flash-preview-tts-001", # ä½¿ç”¨æœ€æ–°çš„TTSæ¨¡å‹
+           contents=args.text,
+           config=types.GenerateContentConfig(
+              response_modalities=["AUDIO"],
+              speech_config=types.SpeechConfig(
+                 voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                       # æ‚¨å¯ä»¥åœ¨è¿™é‡Œé€‰æ‹©ä¸åŒçš„å£°éŸ³ï¼Œ'Kore' æ˜¯ä¸€ä¸ªå¬èµ·æ¥ä¸é”™çš„é€‰æ‹©
+                       voice_name='Kore',
+                    )
+                 )
+              ),
+           )
         )
 
-        # 4. Ñ¡ÔñÒôÆµÎÄ¼şÀàĞÍ
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
-        )
+        # 2. æå–éŸ³é¢‘æ•°æ®
+        #    æ•°æ®ä½äº response.candidates[0].content.parts[0].inline_data.data
+        if response.candidates and response.candidates[0].content.parts and response.candidates[0].content.parts[0].inline_data:
+            audio_data = response.candidates[0].content.parts[0].inline_data.data
 
-        # 5. Ö´ĞĞÎÄ±¾µ½ÓïÒôµÄÇëÇó
-        print("-- ÕıÔÚÇëÇóÓïÒôºÏ³É...")
-        response = client.synthesize_speech(
-            input=synthesis_input, voice=voice, audio_config=audio_config
-        )
+            # 3. å°†éŸ³é¢‘æ•°æ®å†™å…¥æ–‡ä»¶
+            write_wave_file(args.output_file, audio_data)
+            print(f"-- è¯­éŸ³æ–‡ä»¶å·²æˆåŠŸä¿å­˜åˆ°: {args.output_file}")
+            # æˆåŠŸæ—¶ï¼Œå¯ä»¥ä»€ä¹ˆéƒ½ä¸è¾“å‡ºï¼Œæˆ–è€…è¾“å‡ºä¸€ä¸ªæˆåŠŸæ ‡è®°ï¼Œç”±C++æ£€æŸ¥é€€å‡ºç 0å³å¯
+        else:
+            # å¦‚æœAPIæ²¡æœ‰è¿”å›é¢„æœŸçš„éŸ³é¢‘æ•°æ®
+            raise ValueError("APIå“åº”ä¸­æœªæ‰¾åˆ°æœ‰æ•ˆçš„éŸ³é¢‘æ•°æ®ã€‚")
 
-        # 6. ½«ÏìÓ¦µÄÒôÆµÄÚÈİĞ´ÈëÊä³öÎÄ¼ş
-        with open(args.output_file, "wb") as out:
-            out.write(response.audio_content)
-            print(f"-- ÓïÒôÎÄ¼şÒÑ³É¹¦±£´æµ½: {args.output_file}")
-            
     except Exception as e:
-        print(f"!! TTS Error: {str(e)}", file=sys.stderr)
-        exit(1) # ·¢Éú´íÎóÊ±£¬ÒÔ·ÇÁã×´Ì¬ÂëÍË³ö£¬·½±ãC++¶Ë²¶»ñ
+        # æ•è·APIè°ƒç”¨å¼‚å¸¸æˆ–æ–‡ä»¶å†™å…¥å¼‚å¸¸
+        import sys
+        print(f"é”™è¯¯: è¯­éŸ³åˆæˆå¤±è´¥ - {str(e)}", file=sys.stderr)
+        # ä»¥éé›¶é€€å‡ºç é€€å‡ºï¼ŒC++å¯ä»¥æ•è·åˆ°è¿™ä¸ªé”™è¯¯
+        exit(1)
 
-
-# --- 3. Ö÷º¯ÊıÓëÃüÁîĞĞ½âÎö ---
+# --- 3. ä¸»å‡½æ•°ä¸å‘½ä»¤è¡Œè§£æ ---
 
 def main():
-    # Ö÷½âÎöÆ÷
-    parser = argparse.ArgumentParser(description="AI ·şÎñ½Å±¾£¬Í¨¹ı×ÓÃüÁîÌá¹©²»Í¬¹¦ÄÜ¡£")
-    subparsers = parser.add_subparsers(dest='command', required=True, help='¿ÉÓÃµÄ×ÓÃüÁî')
+    # ä¸»è§£æå™¨
+    parser = argparse.ArgumentParser(description="AI æœåŠ¡è„šæœ¬ï¼Œé€šè¿‡å­å‘½ä»¤æä¾›ä¸åŒåŠŸèƒ½ã€‚")
+    subparsers = parser.add_subparsers(dest='command', required=True, help='å¯ç”¨çš„å­å‘½ä»¤')
 
-    # ×ÓÃüÁî: understand
-    parser_understand = subparsers.add_parser('understand', help='´ÓÒôÆµÀí½âÓÃ»§ÒâÍ¼²¢¹æ»®²Ù×÷¡£')
-    parser_understand.add_argument('--file_path', type=str, required=True, help='ÊäÈëµÄÒôÆµÎÄ¼şÂ·¾¶¡£')
-    parser_understand.add_argument('--prompt_text', type=str, required=True, help='°üº¬Tools¶¨ÒåµÄSystem Prompt¡£')
+    # å­å‘½ä»¤: understand
+    parser_understand = subparsers.add_parser('understand', help='ä»éŸ³é¢‘ç†è§£ç”¨æˆ·æ„å›¾å¹¶è§„åˆ’æ“ä½œã€‚')
+    parser_understand.add_argument('--file_path', type=str, required=True, help='è¾“å…¥çš„éŸ³é¢‘æ–‡ä»¶è·¯å¾„ã€‚')
+    parser_understand.add_argument('--prompt_text', type=str, required=True, help='åŒ…å«Toolså®šä¹‰çš„System Promptã€‚')
     parser_understand.set_defaults(func=handle_understand)
 
-    # ×ÓÃüÁî: generate_response
-    parser_response = subparsers.add_parser('generate_response', help='¸ù¾İ²Ù×÷½á¹ûÉú³É×ÔÈ»ÓïÑÔ»Ø¸´¡£')
-    parser_response.add_argument('--result_text', type=str, required=True, help='C++Ö´ĞĞToolºóµÄ½á¹û×Ö·û´®¡£')
+    # å­å‘½ä»¤: generate_response
+    parser_response = subparsers.add_parser('generate_response', help='æ ¹æ®æ“ä½œç»“æœç”Ÿæˆè‡ªç„¶è¯­è¨€å›å¤ã€‚')
+    parser_response.add_argument('--result_text', type=str, required=True, help='C++æ‰§è¡ŒToolåçš„ç»“æœå­—ç¬¦ä¸²ã€‚')
     parser_response.set_defaults(func=handle_generate_response)
 
-    # ×ÓÃüÁî: tts
-    parser_tts = subparsers.add_parser('tts', help='½«ÎÄ±¾×ª»»ÎªÓïÒô¡£')
-    parser_tts.add_argument('--text', type=str, required=True, help='ĞèÒª×ª»»ÎªÓïÒôµÄÎÄ±¾¡£')
-    parser_tts.add_argument('--output_file', type=str, required=True, help='±£´æÊä³öÒôÆµµÄÎÄ¼şÂ·¾¶¡£')
+    # å­å‘½ä»¤: tts
+    parser_tts = subparsers.add_parser('tts', help='å°†æ–‡æœ¬è½¬æ¢ä¸ºè¯­éŸ³ã€‚')
+    parser_tts.add_argument('--text', type=str, required=True, help='éœ€è¦è½¬æ¢ä¸ºè¯­éŸ³çš„æ–‡æœ¬ã€‚')
+    parser_tts.add_argument('--output_file', type=str, required=True, help='ä¿å­˜è¾“å‡ºéŸ³é¢‘çš„æ–‡ä»¶è·¯å¾„ã€‚')
     parser_tts.set_defaults(func=handle_tts)
 
-    # ½âÎö²ÎÊı²¢µ÷ÓÃ¶ÔÓ¦µÄ´¦Àíº¯Êı
+    # è§£æå‚æ•°å¹¶è°ƒç”¨å¯¹åº”çš„å¤„ç†å‡½æ•°
     args = parser.parse_args()
     args.func(args)
 

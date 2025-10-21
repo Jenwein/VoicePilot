@@ -1,18 +1,21 @@
 #pragma once
 
-//TODO:
-class AgentCore
+namespace Razel
 {
-public:
-
 	enum class AgentState
 	{
-		Idle,Listening,Processing,Speaking
+		Idle, Listening, Processing, Speaking
 	};
+	//TODO:
+	class AgentCore
+	{
+	public:
 
-	void GetCurrentState();
-	void OnUpdate();
+		AgentState GetCurrentState() const { return m_CurrentState; }
+		void OnUpdate();
 
-private:
-};
+	private:
 
+		AgentState m_CurrentState = AgentState::Idle;
+	};
+}

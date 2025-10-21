@@ -226,6 +226,12 @@ namespace Razel {
 		}
 
 		// Voice Pilot
+		// 显示当前的AI助手的内容及任务(以及开始停止等信息)
+		//ImGui::Begin("Content");
+		////TODO:
+		//ImGui::End();
+
+
 		//AgentState currentState = m_AgentCore->GetCurrentState();
 		//switch (currentState)
 		//{
@@ -240,11 +246,13 @@ namespace Razel {
 		//TODO:
 		ImGui::End();
 
-		ImGui::Begin("TODO2");
-		//TODO:后期尝试实现一个悬浮球效果显示
-		ImGui::End();
+		// 后期来的及可以添加悬浮球的UI，当主界面最小化后显示悬浮球
+		//ImGui::Begin("悬浮球");
+		////TODO:作为一个悬浮球
+		//ImGui::End();
 
-		// TODO:后期ViewPort显示一个3D模型作为语言助手的形象
+
+		// TODO:ViewPort显示一个3D模型作为语言助手的形象，后期如果来的及可以通过控制模型的变化来表现当前AI助手的状态
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
@@ -322,7 +330,7 @@ namespace Razel {
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
-
+		return false;
 	}
 
 	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent& e)
