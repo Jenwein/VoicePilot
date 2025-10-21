@@ -45,11 +45,11 @@ namespace Razel {
 		}
 
 		// 1. 配置编码器 (Encoder) - 用于将PCM音频数据写入WAV文件
-		ma_encoder_config encoderConfig = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, 2, 48000);
-		if (ma_encoder_init_file(filePath.c_str(), &encoderConfig, &m_Encoder) != MA_SUCCESS) {
-			std::cerr << "Failed to initialize encoder for file: " << filePath << std::endl;
-			return false;
-		}
+        ma_encoder_config encoderConfig = ma_encoder_config_init(ma_encoding_format_wav, ma_format_s16, 1, 22050);
+        if (ma_encoder_init_file(filePath.c_str(), &encoderConfig, &m_Encoder) != MA_SUCCESS) {
+            std::cerr << "Failed to initialize encoder for file: " << filePath << std::endl;
+            return false;
+        }
 
 		// 2. 配置录音设备 (Device)
 		ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
