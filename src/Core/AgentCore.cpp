@@ -101,10 +101,22 @@ namespace Razel
 				
 				nlohmann::json responseJson;
 				try {
-					// 使用更安全的JSON解析方式
 					responseJson = nlohmann::json::parse(jsonOutput, nullptr, false);
 					if (responseJson.is_discarded()) {
-						throw nlohmann::json::parse_error::create(101, 0, "JSON parsing failed",nullptr);
+						throw nlohmann::json::parse_error::create(101, 0, "JSON parsing failed", nullptr);
+					}
+
+					if (responseJson.is_string()) {
+						const std::string inner = responseJson.get<std::string>();
+						auto innerJson = nlohmann::json::parse(inner, nullptr, false);
+						if (innerJson.is_discarded() || !innerJson.is_object()) {
+							throw nlohmann::json::parse_error::create(101, 0, "Nested JSON parsing failed", nullptr);
+						}
+						responseJson = std::move(innerJson);
+					}
+
+					if (!responseJson.is_object()) {
+						throw nlohmann::json::parse_error::create(101, 0, "Top-level is not JSON object", nullptr);
 					}
 				}
 				catch (const nlohmann::json::parse_error& e) {
@@ -353,8 +365,15 @@ namespace Razel
 				}
 				// 跳过其他控制字符
 			}
-			
-			return cleanedJson;
+			// 替换反引号为双引号，修复JSON语法错误
+			std::string finalJson = cleanedJson;
+			size_t pos = 0;
+			while ((pos = finalJson.find('`', pos)) != std::string::npos) {
+				finalJson.replace(pos, 1, "\"");
+				pos += 1; // 避免无限循环
+			}
+
+			return finalJson;
 		}
 		else {
 			// 如果没有找到完整的JSON结构，返回整个输出

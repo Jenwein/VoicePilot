@@ -154,6 +154,7 @@ def handle_process_turn(args):
                     result = {
                         "final_response": final_text.strip()
                     }
+                    final_text = final_text.replace('`', '"')  # 将反引号替换为双引号
                     logging.info("模型返回最终回复")
                     # 使用ensure_ascii=False和separators来确保输出格式正确
                     print(json.dumps(result, ensure_ascii=False, separators=(',', ':')))
