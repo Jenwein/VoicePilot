@@ -20,8 +20,9 @@ namespace Razel
 		void ProcessAudio(const std::string& audioFilePath);//TMP:PUBILC
 	private:
 		void RegisterAllTools();
-		void GenerateAndSpeakResponse(const std::string& toolResult);
+		void GenerateAndSpeakResponse(const std::string& finalResponseText);
 		void SaveToolDefinitionsToFile();
+		std::string ExtractJsonFromOutput(const std::string& output);
 	private:
 		AgentState m_CurrentState;
 		Scope<AudioManager> m_AudioManager;
