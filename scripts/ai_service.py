@@ -267,9 +267,8 @@ def handle_tts(args):
     处理"语音合成"任务 (Stage 4)
     接收文本，保存为音频文件
     """
-    logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{args.output_file}"')
-
     try:
+        logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{args.output_file}"')
         # 1. 调用 TTS 模型
         #    参考 TTSexam.py 和 Submodules - Google Gen AI SDK documentation.pdf
         #    API 参考: Page 189 (GenerateContentConfig), Page 399 (SpeechConfig)
@@ -317,6 +316,7 @@ def handle_tts(args):
         }
         logging.error(f"语音合成失败: {str(e)}")
         print(json.dumps(error_result, ensure_ascii=False, separators=(',', ':')))
+        logging.error(f"记录日志时出错: {e}")
         # 以非零退出码退出，C++可以捕获到这个错误
         exit(1)
 
