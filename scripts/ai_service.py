@@ -25,148 +25,233 @@ except KeyError:
     logging.error("请先设置 GEMINI_API_KEY 环境变量。")
     exit(1)
 
-# --- 2. 任务处理函数 ---
-
-def handle_understand(args):
-    """
-    处理"理解与规划"任务 (Stage 1)
-    接收音频和System Prompt文件路径，返回Function Call JSON
-    """
-    logging.info(f'开始处理理解任务: 文件路径="{args.file_path}", 工具定义文件="{args.prompt_text}"')
-
+# 临时方案，使用gemini的ASR，后期考虑在C++中使用离线STT/ASR
+# 无参数,音频文件路径始终在assets/audios/下名称问input.wav,返回转录文本作为用户请求
+def handle_audio():
+    audio_file_path = os.path.join("assets", "audios", "input.wav")
+    logging.info(f'收到音频转录请求: 文件路径={audio_file_path}')
+    
     try:
-        # 1. 读取工具定义文件
-        logging.info("正在读取工具定义文件...")
-        with open(args.prompt_text, 'r', encoding='utf-8') as f:
-            function_declarations_list = json.load(f)
-        logging.info("工具定义文件读取成功")
-
-        # 2. 上传音频文件
-        # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 29, client.files.upload)
-        logging.info("正在上传音频文件...")
-        audio_file = client.files.upload(file=args.file_path)
-        logging.info(f"音频文件上传成功: {audio_file.name}")
-
-        # 3. 准备 Tools 定义
-        #    prompt_text 现在是包含 function_declarations 的JSON文件路径
-        # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 190, GenerateContentConfig)
-        tools = types.Tool(function_declarations=function_declarations_list)
-        config = types.GenerateContentConfig(tools=[tools])
-        # 4. 调用模型发起请求
-        #    我们将 "请根据音频内容执行操作" 作为引导模型的指令
-        # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
-        instructional_prompt = """
-        请仔细听取音频内容，并从可用的工具定义中选择最合适的工具来执行用户的请求。
-
-        如果您能明确理解用户的意图并找到匹配的工具，请使用该工具执行操作。
+        # 检查音频文件是否存在
+        if not os.path.exists(audio_file_path):
+            error_result = {
+                "error": "音频文件未找到",
+                "details": f"文件路径: {audio_file_path}"
+            }
+            logging.error(f"音频文件未找到: {audio_file_path}")
+            print(json.dumps(error_result, ensure_ascii=False))
+            exit(1)
         
-        如果用户的请求不明确或与任何可用工具的功能都不匹配，请返回一个明确的错误信息，说明具体原因，例如：
-        - 音频质量问题（如噪音太大、语音不清晰等）
-        - 请求内容不完整或不明确
-        - 没有找到匹配的工具功能
+        # 读取音频文件并转换为字节数据
+        logging.info("正在读取音频文件...")
+        with open(audio_file_path, 'rb') as f:
+            audio_bytes = f.read()
         
-        请不要在不确定的情况下猜测或强行调用工具。
-        """
-        logging.info("正在向 Gemini API 发送请求...")
+        # 调用 Gemini API 进行音频转录
+        logging.info("正在调用 Gemini ASR API...")
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[instructional_prompt, audio_file],
-            config=config,
+            model='gemini-2.5-flash',
+            contents=[
+                'Generate a transcript of the speech.',
+                types.Part.from_bytes(
+                    data=audio_bytes,
+                    mime_type='audio/wav',
+                )
+            ]
         )
-        # 5. 从 response 中提取 function call 并格式化为 JSON
-        #    参考 FunctionCallingexam.py
-        if response.candidates and response.candidates[0].content.parts:
-            # 检查是否有 function call
-            if hasattr(response.candidates[0].content.parts[0], 'function_call'):
-                function_call = response.candidates[0].content.parts[0].function_call
-                result = {
-                    "functionCall": {
-                        "name": function_call.name,
-                        "args": dict(function_call.args)
-                    }
-                }
-                print(json.dumps(result, ensure_ascii=False))
-            else:
-                # 获取模型的文本响应
-                error_message = response.candidates[0].content.parts[0].text
-                error_response = {
-                    "error": "未能识别出明确的函数调用指令",
-                    "details": error_message or "无法理解用户请求"
-                }
-                print(json.dumps(error_response, ensure_ascii=False))
-        else:
-            print(json.dumps({
-                "error": "模型未返回有效响应",
-                "details": "服务器返回了空响应"
-            }, ensure_ascii=False))
-
-    except FileNotFoundError as e:
-        logging.error(f"文件未找到: {str(e)}")
-        print(json.dumps({"error": f"文件未找到: {str(e)}"}))
-    except json.JSONDecodeError:
-        logging.error("Tool 定义文件不是有效的JSON格式。")
-        print(json.dumps({"error": "Tool 定义文件不是有效的JSON格式。"}))
-    except Exception as e:
-        # 捕获其他可能的API调用异常或处理异常
-        logging.error(f"处理过程中发生未知错误: {str(e)}")
-        print(json.dumps({"error": f"处理过程中发生未知错误: {str(e)}"}))
-
-
-def handle_generate_response(args):
-    """
-    处理"响应生成"任务 (Stage 3)
-    接收执行结果，返回自然语言回复
-    """
-    logging.info(f'收到生成响应任务: 执行结果="{args.result_text}"')
-
-    try:
-        # 1. 构建 Prompt
-        #    这个 prompt 指导模型将一个程序执行结果（可能是JSON，也可能是一个简单的字符串）
-        #    转换成一句自然流畅的中文口语回复。
-        prompt = f"""
-        你是一个智能语音助手。刚才你的一个工具执行了一个操作，操作的结果是：
-        ---
-        {args.result_text}
-        ---
-        请根据这个结果，生成一句简短、友好、口语化的中文回复，告知用户操作的结果。请直接给出最终的回复，不要包含任何额外的解释或前缀。
-        """
-
-        # 2. 调用模型发起请求
-        # API 参考: Submodules - Google Gen AI SDK documentation.pdf (Page 51, generate_content)
-        logging.info("正在向 Gemini API 发送请求以生成自然语言回复...")
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-
-        # 3. 提取并打印回复（以JSON格式）
+        
+        # 提取转录文本
         if response.text:
-            # 清理一下可能的前后空白
-            final_response = response.text.strip()
-            # 以JSON格式返回
-            result = {
-                "response": final_response
-            }
-            print(json.dumps(result, ensure_ascii=False))
+            transcript = response.text.strip()
+            logging.info(f"转录成功: {transcript}")
+            
+            # 直接输出转录文本（不使用JSON格式）
+            print(transcript)
         else:
-            # 如果API没有返回文本，提供一个备用回复
-            fallback_response = f"操作已完成，结果是：{args.result_text}。"
-            result = {
-                "response": fallback_response
+            error_result = {
+                "error": "转录失败",
+                "details": "API未返回转录文本"
             }
-            print(json.dumps(result, ensure_ascii=False))
-
-    except Exception as e:
-        # 捕获API调用异常或处理异常，并返回一个对用户友好的错误信息
-        error_response = f"抱歉，我在总结结果时遇到了点麻烦。操作已经执行，其结果是：{args.result_text}。"
-        result = {
-            "response": error_response,
-            "error": str(e)
+            logging.error("API未返回转录文本")
+            print(json.dumps(error_result, ensure_ascii=False))
+            exit(1)
+            
+    except FileNotFoundError:
+        error_result = {
+            "error": "音频文件未找到",
+            "details": f"文件路径: {audio_file_path}"
         }
-        logging.error(f"处理过程中发生错误: {e}")
-        print(json.dumps(result, ensure_ascii=False))
+        logging.error(f"音频文件未找到: {audio_file_path}")
+        print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
+        
+    except Exception as e:
+        error_result = {
+            "error": "音频转录失败",
+            "details": str(e)
+        }
+        logging.error(f"音频转录失败: {str(e)}")
+        print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
 
+        
+# 循环理解用户意图并规划操作，每轮接受用户请求文本，工具定义文件路径，上一轮操作JSON与C++执行结果，返回规划的操作JSON
+def handle_process_turn(args):
+    logging.info(f'收到理解请求: 用户请求="{args.user_request}", tools_file="{args.tools_file}", previous_turn="{args.previous_turn}"')
+    
+    try:
+        # 1. 加载工具定义
+        tools_definitions = []
+        if args.tools_file and os.path.exists(args.tools_file):
+            with open(args.tools_file, 'r', encoding='utf-8') as f:
+                tools_data = json.load(f)
+                tools_definitions = tools_data.get('tools', [])
+                logging.info(f"加载了 {len(tools_definitions)} 个工具定义")
+        
+        # 2. 解析上一轮的结果
+        previous_turn_data = None
+        if args.previous_turn:
+            try:
+                previous_turn_data = json.loads(args.previous_turn)
+                logging.info("解析了上一轮操作结果")
+            except json.JSONDecodeError as e:
+                logging.warning(f"无法解析上一轮操作JSON: {e}")
+        
+        # 3. 构建对话内容
+        contents = []
+        
+        # 如果是第一轮，添加用户请求
+        if not previous_turn_data:
+            contents.append(types.Content(
+                role="user", 
+                parts=[types.Part(text=args.user_request)]
+            ))
+        else:
+            # 如果有上一轮的结果，需要构建完整的对话历史
+            # 先添加原始用户请求
+            contents.append(types.Content(
+                role="user", 
+                parts=[types.Part(text=args.user_request)]
+            ))
+            
+            # 添加之前的模型响应（包含function_call）
+            if previous_turn_data.get('function_calls'):
+                model_parts = []
+                for func_call in previous_turn_data['function_calls']:
+                    model_parts.append(types.Part(
+                        function_call=types.FunctionCall(
+                            name=func_call['name'],
+                            args=func_call['args']
+                        )
+                    ))
+                contents.append(types.Content(role="model", parts=model_parts))
+                
+                # 添加工具执行结果
+                if previous_turn_data.get('execution_results'):
+                    user_parts = []
+                    for i, result in enumerate(previous_turn_data['execution_results']):
+                        func_name = previous_turn_data['function_calls'][i]['name']
+                        user_parts.append(types.Part.from_function_response(
+                            name=func_name,
+                            response=result
+                        ))
+                    contents.append(types.Content(role="user", parts=user_parts))
+        
+        # 4. 配置工具
+        tools = None
+        config = None
+        if tools_definitions:
+            # 转换工具定义格式为 Gemini API 格式
+            function_declarations = []
+            for tool in tools_definitions:
+                function_declarations.append({
+                    "name": tool["name"],
+                    "description": tool["description"],
+                    "parameters": tool["parameters"]
+                })
+            
+            tools = types.Tool(function_declarations=function_declarations)
+            config = types.GenerateContentConfig(tools=[tools])
+        
+        # 5. 调用 Gemini API
+        logging.info("正在调用 Gemini API...")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=config
+        )
+        
+        # 6. 解析响应
+        result = {
+            "status": "finished",
+            "function_calls": [],
+            "response_text": "",
+            "reasoning": ""
+        }
+        
+        # 检查是否有 function call
+        if (response.candidates and 
+            response.candidates[0].content.parts):
+            
+            has_function_calls = False
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'function_call') and part.function_call:
+                    has_function_calls = True
+                    result["function_calls"].append({
+                        "name": part.function_call.name,
+                        "args": dict(part.function_call.args)
+                    })
+                    logging.info(f"检测到工具调用: {part.function_call.name}")
+            
+            # 如果有工具调用，状态设为 continue
+            if has_function_calls:
+                result["status"] = "continue"
+                result["reasoning"] = "需要执行工具调用"
+            else:
+                # 没有工具调用，提取文本响应
+                if response.text:
+                    result["response_text"] = response.text.strip()
+                    result["reasoning"] = "对话结束，返回最终回复"
+                else:
+                    result["response_text"] = "我理解了您的请求。"
+                    result["reasoning"] = "未获取到文本响应，使用默认回复"
+        else:
+            # 没有有效响应
+            result["response_text"] = "抱歉，我无法理解您的请求。"
+            result["reasoning"] = "API响应为空或无效"
+        
+        # 7. 返回结果
+        logging.info(f"返回结果: status={result['status']}, function_calls={len(result['function_calls'])}")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        
+    except FileNotFoundError:
+        error_result = {
+            "error": "工具定义文件未找到",
+            "details": f"文件路径: {args.tools_file}"
+        }
+        logging.error(f"工具定义文件未找到: {args.tools_file}")
+        print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
+        
+    except json.JSONDecodeError as e:
+        error_result = {
+            "error": "JSON解析失败",
+            "details": str(e)
+        }
+        logging.error(f"JSON解析失败: {str(e)}")
+        print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
+        
+    except Exception as e:
+        error_result = {
+            "error": "LLM处理失败",
+            "details": str(e)
+        }
+        logging.error(f"LLM处理失败: {str(e)}")
+        print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
 
+# 语音合成后续再测试,输出文件路径始终为assets/audios/output.wav
 def write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_width: int = 2, rate: int = 24000):
     """将原始PCM数据写入WAV文件"""
     with wave.open(filename, "wb") as wf:
@@ -180,7 +265,8 @@ def handle_tts(args):
     处理"语音合成"任务 (Stage 4)
     接收文本，保存为音频文件
     """
-    logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{args.output_file}"')
+    audio_file_path = os.path.join("assets", "audios", "output.wav")
+    logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{audio_file_path}"')
 
     try:
         # 1. 调用 TTS 模型
@@ -209,11 +295,11 @@ def handle_tts(args):
             audio_data = response.candidates[0].content.parts[0].inline_data.data
 
             # 3. 将音频数据写入文件
-            write_wave_file(args.output_file, audio_data)
+            write_wave_file(audio_file_path, audio_data)
             # 以JSON格式返回成功信息
             result = {
                 "status": "success",
-                "message": f"语音文件已成功保存到: {args.output_file}"
+                "message": f"语音文件已成功保存到: {audio_file_path}"
             }
             print(json.dumps(result, ensure_ascii=False))
         else:
@@ -237,24 +323,23 @@ def handle_tts(args):
 
 def main():
     # 主解析器
-    parser = argparse.ArgumentParser(description="AI 服务脚本，通过子命令提供不同功能。")
+    parser = argparse.ArgumentParser(description="AI 服务脚本，通过子命令提供不同功能")
     subparsers = parser.add_subparsers(dest='command', required=True, help='可用的子命令')
 
-    # 子命令: understand
-    parser_understand = subparsers.add_parser('understand', help='从音频理解用户意图并规划操作。')
-    parser_understand.add_argument('--file_path', type=str, required=True, help='输入的音频文件路径。')
-    parser_understand.add_argument('--prompt_text', type=str, required=True, help='包含Tools定义的JSON文件路径。')
-    parser_understand.set_defaults(func=handle_understand)
+    # 子命令: ASR
+    parser_understand = subparsers.add_parser('ASR', help='转写音频文件为文本')
+    parser_understand.set_defaults(func=handle_audio)
 
     # 子命令: generate_response
-    parser_response = subparsers.add_parser('generate_response', help='根据操作结果生成自然语言回复。')
-    parser_response.add_argument('--result_text', type=str, required=True, help='C++执行Tool后的结果字符串。')
-    parser_response.set_defaults(func=handle_generate_response)
+    parser_response = subparsers.add_parser('LLM', help='理解用户请求并规划操作')
+    parser_response.add_argument('--user_request', type=str, required=True, help='用户请求文本')
+    parser_response.add_argument('--tools_file', type=str, required=True, help='包含Tools定义的JSON文件路径')
+    parser_response.add_argument('--previous_turn', type=str, required=False, help='上一轮操作JSON')
+    parser_response.set_defaults(func=handle_process_turn)
 
     # 子命令: tts
-    parser_tts = subparsers.add_parser('tts', help='将文本转换为语音。')
-    parser_tts.add_argument('--text', type=str, required=True, help='需要转换为语音的文本。')
-    parser_tts.add_argument('--output_file', type=str, required=True, help='保存输出音频的文件路径。')
+    parser_tts = subparsers.add_parser('TTS', help='将文本转换为语音')
+    parser_tts.add_argument('--text', type=str, required=True, help='需要转换为语音的文本')
     parser_tts.set_defaults(func=handle_tts)
 
     # 解析参数并调用对应的处理函数

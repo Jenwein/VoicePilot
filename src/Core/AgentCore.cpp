@@ -50,67 +50,23 @@ namespace Razel
 
 	void AgentCore::ProcessAudio(const std::string& audioFilePath)
 	{
-		std::cout << "[AgentCore] ====== STAGE 1 & 2: UNDERSTAND AND EXECUTE ======" << std::endl;
-		try
-		{
-			// --- STAGE 1: 理解与规划 ---
-			PythonScriptCommand understandCommand;
-			understandCommand.SubCommand = "understand";
-			understandCommand.Args = {
-				{"--file_path", audioFilePath},
-				{"--prompt_text", m_ToolDefsFilePath}
-			};
+		// 1. 语音转文本
+		// pycmd -ASR得到文本/错误json
 
-			// 3. 构建并执行命令
-			std::string command = m_CommandBuilder.BuildCommand(understandCommand);
-			std::cout << "[AgentCore] Executing 'understand' command:\n" << command<< std::endl;
-			std::string output = ProcessUtils::Exec(command.c_str());
-			std::cout << "[AgentCore] Received JSON from Python: " << output << std::endl;
+		// 2. 工具调用处理
+		// pycmd -LLM 得到规定好的FunctionCalling格式/错误json
 
-			std::string jsonOutput;
-			size_t firstBrace = output.find('{');
-			size_t lastBrace = output.rfind('}');
+		// 3. 响应生成
+		// GenerateAndSpeakResponse(resultText)
+	}
 
-			if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
-				jsonOutput = output.substr(firstBrace, lastBrace - firstBrace + 1);
-			}
-			else {
-				jsonOutput = output;
-			}
+	void AgentCore::GenerateAndSpeakResponse(const std::string& resultText)
+	{
+		// 1. 使用TTS生成语音文件
+		// pycmd -TTS 生成语音文件在assets/audios/output.wav
 
-			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
-			
-			// --- STAGE 2: 执行 ---
-
-			// 4. 解析 Python 返回的 Function Call JSON
-			nlohmann::json functionCallJson = nlohmann::json::parse(jsonOutput);
-
-			if (functionCallJson.contains("error")) {
-				throw std::runtime_error("Python script returned an error: " + functionCallJson["error"].get<std::string>());
-			}
-
-			std::string toolName = functionCallJson["functionCall"]["name"];
-			nlohmann::json toolArgs = functionCallJson["functionCall"]["args"];
-
-			// 5. 调用 ToolRegistry 执行工具
-			std::cout << "[AgentCore] Executing tool '" << toolName << "' via ToolRegistry." << std::endl;
-			std::string toolResult = ToolRegistry::GetInstance().ExecuteTool(toolName, toolArgs);
-			std::cout << "[AgentCore] Tool execution result: " << toolResult << std::endl;
-
-			// 6. 进入下一个阶段：生成并播报回复
-			GenerateAndSpeakResponse(toolResult);
-
-		}
-		catch (const nlohmann::json::parse_error& e)
-		{
-			std::cerr << "[AgentCore] Error: Failed to parse JSON from Python script. Details: " << e.what() << std::endl;
-			m_CurrentState = AgentState::Idle;
-		}
-		catch (const std::runtime_error& e)
-		{
-			std::cerr << "[AgentCore] Error during processing: " << e.what() << std::endl;
-			m_CurrentState = AgentState::Idle; // 发生错误时也要返回 Idle 状态
-		}
+		// 2. 播放生成的语音文件
+		// m_AudioManager->PlayAudio(OutAudioPath);
 	}
 
 	void AgentCore::RegisterAllTools()
@@ -121,119 +77,6 @@ namespace Razel
 		registry.RegisterTool<GetCurrentTimeTool>("get_current_time");
 		registry.RegisterTool<WriteFileTool>("write_to_file");
 		registry.RegisterTool<GetKnownFolderPathTool>("get_known_folder_path");
-	}
-
-	void AgentCore::GenerateAndSpeakResponse(const std::string& toolResult)
-	{
-		std::cout << "[AgentCore] ====== STAGE 3 & 4: RESPOND AND SPEAK ======" << std::endl;
-
-		try
-		{
-			// --- STAGE 3: 响应生成 ---
-			PythonScriptCommand genResponseCommand;
-			genResponseCommand.SubCommand = "generate_response";
-			genResponseCommand.Args = { {"--result_text", toolResult} };
-
-			std::string command = m_CommandBuilder.BuildCommand(genResponseCommand);
-			std::cout << "[AgentCore] Executing 'generate_response' command..." << std::endl;
-			std::string output = ProcessUtils::Exec(command.c_str());
-			std::cout << "[AgentCore] Received output from Python: " << output << std::endl;
-
-			// 从Python输出中提取JSON部分
-			std::string jsonOutput;
-			size_t firstBrace = output.find('{');
-			size_t lastBrace = output.rfind('}');
-
-			if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
-				jsonOutput = output.substr(firstBrace, lastBrace - firstBrace + 1);
-			}
-			else {
-				// 如果没有找到有效的JSON结构，使用整个输出（向后兼容）
-				jsonOutput = output;
-			}
-
-			std::cout << "[AgentCore] Extracted JSON: " << jsonOutput << std::endl;
-
-			// 解析JSON以提取响应文本
-			std::string finalResponseText;
-			try {
-				nlohmann::json responseJson = nlohmann::json::parse(jsonOutput);
-				if (responseJson.contains("response")) {
-					finalResponseText = responseJson["response"];
-				}
-				else {
-					// 如果JSON中没有response字段，使用整个JSON字符串
-					finalResponseText = jsonOutput;
-				}
-			}
-			catch (const nlohmann::json::parse_error& e) {
-				// 如果解析失败，使用原始输出
-				finalResponseText = output;
-				// 尝试从输出中提取JSON响应
-				size_t responseStart = output.find("\"response\":");
-				if (responseStart != std::string::npos) {
-					size_t quoteStart = output.find('"', responseStart + 12);
-					if (quoteStart != std::string::npos) {
-						size_t quoteEnd = output.find('"', quoteStart + 1);
-						if (quoteEnd != std::string::npos) {
-							// 简单处理，提取第一个引号之间的内容
-							finalResponseText = output.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
-						}
-					}
-				}
-			}
-
-			// --- STAGE 4: 播报 ---
-			m_CurrentState = AgentState::Speaking;
-			PythonScriptCommand ttsCommand;
-			ttsCommand.SubCommand = "tts";
-			ttsCommand.Args = {
-				{"--text", finalResponseText},
-				{"--output_file", m_OutputAudioPath}
-			};
-
-			command = m_CommandBuilder.BuildCommand(ttsCommand);
-			std::cout << "[AgentCore] Executing 'tts' command\n" << command << std::endl;
-			std::string ttsOutput = ProcessUtils::Exec(command.c_str()); // 执行TTS，捕获输出
-			std::cout << "[AgentCore] Received output from TTS: " << ttsOutput << std::endl;
-
-			// 解析TTS返回的JSON
-			try {
-				std::string ttsJsonOutput;
-				size_t firstBrace = ttsOutput.find('{');
-				size_t lastBrace = ttsOutput.rfind('}');
-
-				if (firstBrace != std::string::npos && lastBrace != std::string::npos && firstBrace < lastBrace) {
-					ttsJsonOutput = ttsOutput.substr(firstBrace, lastBrace - firstBrace + 1);
-					nlohmann::json ttsResult = nlohmann::json::parse(ttsJsonOutput);
-					
-					if (ttsResult.contains("error")) {
-						std::cerr << "[AgentCore] TTS Error: " << ttsResult["error"].get<std::string>() << std::endl;
-						if (ttsResult.contains("details")) {
-							std::cerr << "[AgentCore] TTS Error Details: " << ttsResult["details"].get<std::string>() << std::endl;
-						}
-					} else if (ttsResult.contains("status") && ttsResult["status"] == "success") {
-						std::cout << "[AgentCore] TTS Success: " << ttsResult["message"].get<std::string>() << std::endl;
-					}
-				}
-			}
-			catch (const nlohmann::json::parse_error& e) {
-				// 如果解析失败，忽略错误，继续播放音频
-				std::cerr << "[AgentCore] Warning: Failed to parse TTS JSON output: " << e.what() << std::endl;
-			}
-
-			std::cout << "[AgentCore] Playing response audio..." << std::endl;
-			m_AudioManager->PlayAudioFile(m_OutputAudioPath);
-
-			// 播报完成后，返回 Idle 状态
-			m_CurrentState = AgentState::Idle;
-			std::cout << "[AgentCore] Processing finished. Switched back to Idle state." << std::endl;
-		}
-		catch (const std::exception& e)
-		{
-			std::cerr << "[AgentCore] Error in generation/speaking stage: " << e.what() << std::endl;
-			m_CurrentState = AgentState::Idle;
-		}
 	}
 
 	void AgentCore::SaveToolDefinitionsToFile()
