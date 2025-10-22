@@ -19,7 +19,6 @@ namespace Razel {
 		std::time_t now_c = std::chrono::system_clock::to_time_t(now);
 		std::tm now_tm;
 
-		// Use localtime_s for thread safety on Windows, or localtime_r on POSIX
 #ifdef _WIN32
 		localtime_s(&now_tm, &now_c);
 #else
@@ -32,7 +31,6 @@ namespace Razel {
 	}
 
 	std::string GetCurrentTimeTool::Execute(const nlohmann::json& args) {
-		// ������ߺ����κδ���Ĳ���
 		return "Success: Current time is " + getCurrentTimeString();
 	}
 
@@ -57,7 +55,6 @@ namespace Razel {
 			std::filesystem::path filePath(args["path"].get<std::string>());
 			std::string content = args["content"].get<std::string>();
 
-			// ȷ��Ŀ¼����
 			if (filePath.has_parent_path()) {
 				std::filesystem::create_directories(filePath.parent_path());
 			}
@@ -97,7 +94,6 @@ namespace Razel {
 		};
 	}
 
-	// --- GetKnownFolderPathTool ʵ�� ---
 	std::string GetKnownFolderPathTool::Execute(const nlohmann::json& args) {
 		if (!args.contains("folder_name")) {
 			return "Error: Missing required argument 'folder_name'.";
@@ -134,7 +130,6 @@ namespace Razel {
 			return "Error: Failed to get known folder path.";
 		}
 #else
-		// Ϊ Linux/macOS �ṩһ���򵥵�ʵ��
 		const char* home = getenv("HOME");
 		if (home == nullptr) {
 			return "Error: Could not get HOME environment variable.";
@@ -173,4 +168,27 @@ namespace Razel {
 		};
 	}
 
-} // namespace Razel
+	std::string OpenApplicationTool::Execute(const nlohmann::json& args)
+	{
+		return "";
+	}
+
+	nlohmann::json OpenApplicationTool::GetDefinition() const
+	{
+		return {
+			{"name", "open_application"},
+			{"description", "Opens a specified application."},
+			{"parameters", {
+				{"type", "OBJECT"},
+				{"properties", {
+					{"app_name", {
+						{"type", "STRING"},
+						{"description", "The name of the application to open."}
+					}}
+				}},
+				{"required", {"app_name"}}
+			}}
+		};
+	}
+
+}

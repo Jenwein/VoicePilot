@@ -26,7 +26,6 @@ namespace Razel {
 		m_ScriptsPath = scriptsPath;
 		std::cout << "[ScriptCommandBuilder] Found scripts directory at: " << m_ScriptsPath << std::endl;
 
-		// TODO:路径可能有更好的处理方式
 #ifdef _WIN32
 		m_PythonExecutablePath = m_ScriptsPath / ".venv" / "Scripts" / "python.exe";
 #else
@@ -51,24 +50,16 @@ namespace Razel {
 
 		for (const auto& arg : commandInfo.Args) {
 			cmd << " " << arg.Flag << " ";
-			// 对参数值进行转义处理，特别是处理双引号
+
 			std::string escapedValue = arg.Value;
-			// 将双引号替换为转义双引号
+#ifdef _WIN32
 			size_t pos = 0;
 			while ((pos = escapedValue.find("\"", pos)) != std::string::npos) {
 				escapedValue.replace(pos, 1, "\\\"");
-				pos += 2; // 移动到替换后的位置
+				pos += 2;
 			}
-			// 将换行符替换为空格
-			pos = 0;
-			while ((pos = escapedValue.find("\n", pos)) != std::string::npos) {
-				escapedValue.replace(pos, 1, " ");
-			}
-			// 将回车符替换为空格
-			pos = 0;
-			while ((pos = escapedValue.find("\r", pos)) != std::string::npos) {
-				escapedValue.replace(pos, 1, " ");
-			}
+#endif
+
 			cmd << "\"" << escapedValue << "\"";
 		}
 

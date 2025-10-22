@@ -472,7 +472,7 @@ namespace Razel {
 		case AgentState::Idle:
 		{
 			// 水平缓慢转动表示空闲状态
-			m_IdleRotation += ts * 20.0f; // 每秒转动20度
+			m_IdleRotation += ts * 5.0f; // 每秒转动20度
 			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
 			break;
 		}
@@ -498,7 +498,7 @@ namespace Razel {
 		case AgentState::Processing:
 		{
 			// 快速转动
-			m_IdleRotation += ts * 100.0f; // 每秒转动100度（比空闲状态快5倍）
+			m_IdleRotation += ts * 20.0f;
 			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
 			break;
 		}

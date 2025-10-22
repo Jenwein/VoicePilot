@@ -26,4 +26,11 @@ namespace Razel {
 		nlohmann::json GetDefinition() const override;
 	};
 
+	//打开应用程序
+	class OpenApplicationTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
 }
