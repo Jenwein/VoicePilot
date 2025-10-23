@@ -178,9 +178,17 @@ namespace Razel
 				AddPythonPath(scriptsPath.string());
 			}
 
-			// 设置 Python 输出编码为 UTF-8（Windows 兼容性）
-			ExecuteCode("import sys; import os");
+			// 设置Python编码为UTF-8（Windows兼容性）
+			ExecuteCode("import sys; import os; import locale");
+			ExecuteCode("import codecs");
+
+			// 设置环境变量
 			ExecuteCode("os.environ['PYTHONIOENCODING'] = 'utf-8'");
+			ExecuteCode("os.environ['LANG'] = 'en_US.UTF-8'");
+
+			// 设置标准输出编码
+			ExecuteCode("sys.stdout.reconfigure(encoding='utf-8')");
+			ExecuteCode("sys.stderr.reconfigure(encoding='utf-8')");
 
 			// 验证重要的模块是否可用
 			try

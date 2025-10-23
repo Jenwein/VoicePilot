@@ -28,6 +28,10 @@ namespace Razel
 
         std::string ExecuteTool(const std::string& name, const nlohmann::json& args);
 
+		bool HasTool(const std::string& name) const {
+			return m_Tools.find(name) != m_Tools.end();
+		}
+
         //获取所有已注册工具的定义
         nlohmann::json GetAllToolDefinitions() const;
     private:

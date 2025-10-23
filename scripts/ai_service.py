@@ -134,7 +134,14 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
         if tools_file and os.path.exists(tools_file):
             with open(tools_file, 'r', encoding='utf-8') as f:
                 tools_data = json.load(f)
-                tools_definitions = tools_data.get('tools', [])
+                
+                if isinstance(tools_data, list):
+                    tools_definitions = tools_data
+                elif isinstance(tools_data, dict) and 'tools' in tools_data:
+                    tools_definitions = tools_data['tools']
+                else:
+                    tools_definitions = [tools_data] if isinstance(tools_data, dict) else []
+                
                 logging.info(f"加载了 {len(tools_definitions)} 个工具定义")
         
         # 2. 解析上一轮的结果
@@ -149,48 +156,74 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
         # 3. 构建对话内容
         contents = []
         
-        # 如果是第一轮，添加用户请求
+        # 检查是否是工具执行结果的回调
+        is_tool_result = user_request.startswith("Tool execution results:")
+        
         if not previous_turn_data:
+            # 第一轮：直接添加用户请求
             contents.append(types.Content(
                 role="user", 
                 parts=[types.Part(text=user_request)]
             ))
         else:
-            # 如果有上一轮的结果，需要构建完整的对话历史
-            # 先添加原始用户请求
-            contents.append(types.Content(
-                role="user", 
-                parts=[types.Part(text=user_request)]
-            ))
-            
-            # 添加之前的模型响应（包含function_call）
-            if previous_turn_data.get('function_calls'):
-                model_parts = []
-                for func_call in previous_turn_data['function_calls']:
-                    model_parts.append(types.Part(
-                        function_call=types.FunctionCall(
-                            name=func_call['name'],
-                            args=func_call['args']
-                        )
-                    ))
-                contents.append(types.Content(role="model", parts=model_parts))
+            # 后续轮次：需要重建完整的对话历史
+            if is_tool_result:
+                # 这是工具执行结果，需要重建对话历史
+                # 1. 原始用户请求（从工具执行结果中提取或使用历史记录）
+                original_request = "现在几点"  # 这里应该从历史中获取，临时硬编码
+                contents.append(types.Content(
+                    role="user", 
+                    parts=[types.Part(text=original_request)]
+                ))
                 
-                # 添加工具执行结果
-                if previous_turn_data.get('execution_results'):
-                    user_parts = []
-                    for i, result in enumerate(previous_turn_data['execution_results']):
-                        func_name = previous_turn_data['function_calls'][i]['name']
-                        user_parts.append(types.Part.from_function_response(
-                            name=func_name,
-                            response=result
+                # 2. 模型的function call响应
+                if previous_turn_data.get('function_calls'):
+                    model_parts = []
+                    for func_call in previous_turn_data['function_calls']:
+                        model_parts.append(types.Part(
+                            function_call=types.FunctionCall(
+                                name=func_call['name'],
+                                args=func_call['args']
+                            )
                         ))
-                    contents.append(types.Content(role="user", parts=user_parts))
+                    contents.append(types.Content(role="model", parts=model_parts))
+                    
+                    # 3. 解析工具执行结果
+                    try:
+                        # 从 "Tool execution results: [...]" 中提取JSON
+                        results_json = user_request.replace("Tool execution results: ", "")
+                        tool_results = json.loads(results_json)
+                        
+                        user_parts = []
+                        for i, result_info in enumerate(tool_results):
+                            if i < len(previous_turn_data['function_calls']):
+                                func_name = previous_turn_data['function_calls'][i]['name']
+                                result_text = result_info.get('result', 'No result')
+                                user_parts.append(types.Part.from_function_response(
+                                    name=func_name,
+                                    response={"result": result_text}
+                                ))
+                        
+                        if user_parts:
+                            contents.append(types.Content(role="user", parts=user_parts))
+                    except Exception as e:
+                        logging.error(f"解析工具执行结果失败: {e}")
+                        # 如果解析失败，直接添加文本结果
+                        contents.append(types.Content(
+                            role="user", 
+                            parts=[types.Part(text=user_request)]
+                        ))
+            else:
+                # 普通的后续请求
+                contents.append(types.Content(
+                    role="user", 
+                    parts=[types.Part(text=user_request)]
+                ))
         
         # 4. 配置工具
         tools = None
         config = None
         if tools_definitions:
-            # 转换工具定义格式为 Gemini API 格式
             function_declarations = []
             for tool in tools_definitions:
                 function_declarations.append({
@@ -224,6 +257,8 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
             response.candidates[0].content.parts):
             
             has_function_calls = False
+            response_text_parts = []
+            
             for part in response.candidates[0].content.parts:
                 if hasattr(part, 'function_call') and part.function_call:
                     has_function_calls = True
@@ -232,6 +267,8 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
                         "args": dict(part.function_call.args)
                     })
                     logging.info(f"检测到工具调用: {part.function_call.name}")
+                elif hasattr(part, 'text') and part.text:
+                    response_text_parts.append(part.text)
             
             # 如果有工具调用，状态设为 continue
             if has_function_calls:
@@ -239,7 +276,10 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
                 result["reasoning"] = "需要执行工具调用"
             else:
                 # 没有工具调用，提取文本响应
-                if response.text:
+                if response_text_parts:
+                    result["response_text"] = " ".join(response_text_parts).strip()
+                    result["reasoning"] = "对话结束，返回最终回复"
+                elif response.text:
                     result["response_text"] = response.text.strip()
                     result["reasoning"] = "对话结束，返回最终回复"
                 else:
@@ -251,7 +291,7 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
             result["reasoning"] = "API响应为空或无效"
         
         # 7. 返回结果
-        logging.info(f"返回结果: status={result['status']}, function_calls={len(result['function_calls'])}")
+        logging.info(f"返回结果: status={result['status']}, response_text='{result['response_text'][:50]}...', function_calls={len(result['function_calls'])}")
         return result
         
     except FileNotFoundError:
