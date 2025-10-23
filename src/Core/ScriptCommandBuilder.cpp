@@ -26,11 +26,8 @@ namespace Razel {
 		m_ScriptsPath = scriptsPath;
 		std::cout << "[ScriptCommandBuilder] Found scripts directory at: " << m_ScriptsPath << std::endl;
 
-#ifdef _WIN32
 		m_PythonExecutablePath = m_ScriptsPath / ".venv" / "Scripts" / "python.exe";
-#else
-		m_PythonExecutablePath = m_ScriptsPath / ".venv" / "bin" / "python";
-#endif
+
 
 		if (!std::filesystem::exists(m_PythonExecutablePath)) {
 			throw std::runtime_error("Python executable not found in venv at: " + m_PythonExecutablePath.string());
@@ -44,25 +41,37 @@ namespace Razel {
 		std::filesystem::path scriptPath = m_ScriptsPath / "ai_service.py";
 		std::stringstream cmd;
 
-		cmd << "\"" << m_PythonExecutablePath.string() << "\"";
-		cmd << " \"" << scriptPath.string() << "\"";
-		cmd << " " << commandInfo.SubCommand;
+		cmd << "\"" << m_PythonExecutablePath.string() << "\" ";
+		cmd << "\"" << scriptPath.string() << "\" ";
+		cmd << commandInfo.SubCommand;
 
 		for (const auto& arg : commandInfo.Args) {
 			cmd << " " << arg.Flag << " ";
 
 			std::string escapedValue = arg.Value;
-#ifdef _WIN32
+
 			size_t pos = 0;
 			while ((pos = escapedValue.find("\"", pos)) != std::string::npos) {
 				escapedValue.replace(pos, 1, "\\\"");
 				pos += 2;
 			}
-#endif
+
+			pos = 0;
+			while ((pos = escapedValue.find("\\", pos)) != std::string::npos) {
+				if (pos + 1 < escapedValue.length() && escapedValue[pos + 1] == '"') {
+					escapedValue.replace(pos, 1, "\\\\");
+					pos += 2;
+				}
+				else {
+					pos += 1;
+				}
+			}
 
 			cmd << "\"" << escapedValue << "\"";
 		}
 
-		return cmd.str();
+		std::string result = cmd.str();
+		std::cout << "[ScriptCommandBuilder] Generated command: " << result << std::endl;
+		return result;
 	}
 }
