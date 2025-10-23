@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ToolRegistry.h"
+#include "ITool.h"
 #include <string>
 
 namespace Razel {

@@ -25,13 +25,19 @@
 			"%{IncludeDir.ImGuizmo}",
 			"%{IncludeDir.assimp}",
 			"vendor/miniaudio",
-			"vendor/nlohmann"
+			"vendor/nlohmann",
+			"vendor/python/include",
+			"vendor/pybind11/include",
 		}
 
 		links
 		{
 			"Razel",
 		}
+
+		libdirs { "vendor/python/bin" }
+		links {"python313.lib"}
+
 
 		filter "system:windows"
 			systemversion "latest"

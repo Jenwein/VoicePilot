@@ -1,7 +1,6 @@
 #pragma once
 #include <Razel.h>
 #include "../Audio/AudioManager.h"
-#include "../Core/ScriptCommandBuilder.h"
 namespace Razel
 {
 	enum class AgentState
@@ -25,7 +24,7 @@ namespace Razel
 	private:
 		AgentState m_CurrentState;
 		Scope<AudioManager> m_AudioManager;
-		ScriptCommandBuilder m_CommandBuilder;
+
 		const std::string m_InputAudioPath = "Resources/audios/input.wav";
 		const std::string m_OutputAudioPath = "Resources/audios/output.wav";
 		const std::string m_ToolDefsFilePath = "Resources/prompts/toolDefsPrompt.json";

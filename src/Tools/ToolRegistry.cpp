@@ -1,5 +1,6 @@
 #include "ToolRegistry.h"
 #include <iostream>
+#include "ITool.h"
 
 namespace Razel {
 

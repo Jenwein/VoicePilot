@@ -12,6 +12,8 @@
 
 #include <thread>
 
+#include "Python/PythonManager.h"
+
 namespace Razel {
 
 	extern const std::filesystem::path g_AssetPath = "assets";
@@ -255,7 +257,12 @@ namespace Razel {
 		ImGui::Begin("TODO");
 		if (ImGui::Button("test_ExecPython"))
 		{
-			m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			//m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			auto& pythonMgr = PythonManager::GetInstance();
+			if (!pythonMgr.Initialize()) {
+				// 处理初始化失败
+				RZ_ASSERT(false);
+			}
 		}
 		
 		//TODO:

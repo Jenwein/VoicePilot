@@ -1,6 +1,4 @@
 #include "AgentCore.h"
-#include "../Platform/ProcessUtils.h"
-#include "ScriptCommandBuilder.h"
 
 #include <iostream>
 #include <string>

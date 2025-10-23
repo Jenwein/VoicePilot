@@ -39,7 +39,7 @@ namespace Razel {
 			{"name", "get_current_time"},
 			{"description", "Gets the current local date and time."},
 			{"parameters", {
-				{"type", "OBJECT"},
+				{"type", "object"},
 				{"properties", nlohmann::json::object()},
 				{"required", nlohmann::json::array()}
 			}}
@@ -78,22 +78,21 @@ namespace Razel {
 			{"name", "write_to_file"},
 			{"description", "Writes the specified text content to a file. It creates the file if it does not exist, and overwrites it if it exists."},
 			{"parameters", {
-				{"type", "OBJECT"},
+				{"type", "object"},
 				{"properties", {
-					{"path", {
-						{"type", "STRING"},
-						{"description", "The full path of the file to write to, e.g., 'C:/Users/User/Desktop/example.txt'"}
-					}},
 					{"content", {
-						{"type", "STRING"},
+						{"type", "string"},
 						{"description", "The text content to write to the file."}
+					}},
+					{"path", {
+						{"type", "string"},
+						{"description", "The full path of the file to write to, e.g., 'C:/Users/User/Desktop/example.txt'."}
 					}}
 				}},
-				{"required", {"path", "content"}}
+				{"required", {"content", "path"}}
 			}}
 		};
 	}
-
 	std::string GetKnownFolderPathTool::Execute(const nlohmann::json& args) {
 		if (!args.contains("folder_name")) {
 			return "Error: Missing required argument 'folder_name'.";
@@ -156,10 +155,10 @@ namespace Razel {
 			{"name", "get_known_folder_path"},
 			{"description", "Gets the absolute path of a standard system folder."},
 			{"parameters", {
-				{"type", "OBJECT"},
+				{"type", "object"},
 				{"properties", {
 					{"folder_name", {
-						{"type", "STRING"},
+						{"type", "string"},
 						{"description", "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'."}
 					}}
 				}},
@@ -167,22 +166,20 @@ namespace Razel {
 			}}
 		};
 	}
-
 	std::string OpenApplicationTool::Execute(const nlohmann::json& args)
 	{
 		return "";
 	}
 
-	nlohmann::json OpenApplicationTool::GetDefinition() const
-	{
+	nlohmann::json OpenApplicationTool::GetDefinition() const {
 		return {
 			{"name", "open_application"},
 			{"description", "Opens a specified application."},
 			{"parameters", {
-				{"type", "OBJECT"},
+				{"type", "object"},
 				{"properties", {
 					{"app_name", {
-						{"type", "STRING"},
+						{"type", "string"},
 						{"description", "The name of the application to open."}
 					}}
 				}},
@@ -190,5 +187,4 @@ namespace Razel {
 			}}
 		};
 	}
-
 }
