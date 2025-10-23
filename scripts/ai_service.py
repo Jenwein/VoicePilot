@@ -9,15 +9,7 @@ from google import genai
 from google.genai import types
 
 # --- 1. 配置 ---
-# 配置日志记录
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ai_service.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stderr)  # 错误信息仍然输出到stderr
-    ]
-)
+
 
 try:
     client = genai.Client()
@@ -26,9 +18,9 @@ except KeyError:
     exit(1)
 
 # 临时方案，使用gemini的ASR，后期考虑在C++中使用离线STT/ASR
-# 无参数,音频文件路径始终在assets/audios/下名称问input.wav,返回转录文本作为用户请求
-def handle_audio():
-    audio_file_path = os.path.join("assets", "audios", "input.wav")
+# 无参数,Resources/audios/下名称问input.wav,返回转录文本作为用户请求
+def handle_audio(args):
+    audio_file_path = os.path.join("Resources", "audios", "input.wav")
     logging.info(f'收到音频转录请求: 文件路径={audio_file_path}')
     
     try:
@@ -65,8 +57,12 @@ def handle_audio():
             transcript = response.text.strip()
             logging.info(f"转录成功: {transcript}")
             
-            # 直接输出转录文本（不使用JSON格式）
-            print(transcript)
+            # 统一使用JSON格式返回结果
+            result = {
+                "status": "success",
+                "transcript": transcript
+            }
+            print(json.dumps(result, ensure_ascii=False))
         else:
             error_result = {
                 "error": "转录失败",
@@ -251,7 +247,7 @@ def handle_process_turn(args):
         print(json.dumps(error_result, ensure_ascii=False))
         exit(1)
 
-# 语音合成后续再测试,输出文件路径始终为assets/audios/output.wav
+# 语音合成后续再测试,输出文件路径始终为Resources/audios/output.wav
 def write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_width: int = 2, rate: int = 24000):
     """将原始PCM数据写入WAV文件"""
     with wave.open(filename, "wb") as wf:
@@ -265,7 +261,7 @@ def handle_tts(args):
     处理"语音合成"任务 (Stage 4)
     接收文本，保存为音频文件
     """
-    audio_file_path = os.path.join("assets", "audios", "output.wav")
+    audio_file_path = os.path.join("Resources", "audios", "output.wav")
     logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{audio_file_path}"')
 
     try:
@@ -316,8 +312,6 @@ def handle_tts(args):
         }
         logging.error(f"语音合成失败: {str(e)}")
         print(json.dumps(error_result, ensure_ascii=False))
-        # 以非零退出码退出，C++可以捕获到这个错误
-        exit(1)
 
 # --- 3. 主函数与命令行解析 ---
 
