@@ -36,7 +36,7 @@
 		}
 
 		libdirs { "vendor/python/bin" }
-		links {"python313.lib"}
+		links {"python312.lib"}
 
 
 		filter "system:windows"
@@ -45,7 +45,7 @@
 			postbuildcommands
 			{
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll\" \"%{cfg.targetdir}\""),
-				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\"")
+				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\""),
 			}
 
 		filter "configurations:Debug"
