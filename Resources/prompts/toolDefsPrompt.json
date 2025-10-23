@@ -1,48 +1,50 @@
-[
+{
+  "tools": [
     {
-        "description": "Gets the current local date and time.",
-        "name": "get_current_time",
-        "parameters": {
-            "properties": {},
-            "required": [],
-            "type": "OBJECT"
-        }
+      "name": "get_current_time",
+      "description": "获取客户端当前的日期和时间。用于回答任何关于“现在几点”、“今天是什么日子”等问题。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
     },
     {
-        "description": "Gets the absolute path of a standard system folder.",
-        "name": "get_known_folder_path",
-        "parameters": {
-            "properties": {
-                "folder_name": {
-                    "description": "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'.",
-                    "type": "STRING"
-                }
-            },
-            "required": [
-                "folder_name"
-            ],
-            "type": "OBJECT"
-        }
+      "name": "get_known_folder_path",
+      "description": "获取一个系统已知文件夹的完整路径。这对于定位桌面、文档、下载等标准目录非常有用。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "folder_name": {
+            "type": "string",
+            "description": "要查询的已知文件夹的名称。常见的值有 'Desktop' (桌面), 'Documents' (文档), 'Downloads' (下载), 'Music' (音乐), 'Pictures' (图片), 'Videos' (视频)。"
+          }
+        },
+        "required": [
+          "folder_name"
+        ]
+      }
     },
     {
-        "description": "Writes the specified text content to a file. It creates the file if it does not exist, and overwrites it if it exists.",
-        "name": "write_to_file",
-        "parameters": {
-            "properties": {
-                "content": {
-                    "description": "The text content to write to the file.",
-                    "type": "STRING"
-                },
-                "path": {
-                    "description": "The full path of the file to write to, e.g., 'C:/Users/User/Desktop/example.txt'",
-                    "type": "STRING"
-                }
-            },
-            "required": [
-                "path",
-                "content"
-            ],
-            "type": "OBJECT"
-        }
+      "name": "write_to_file",
+      "description": "将指定的文本内容写入到给定的文件路径中。注意：如果文件已经存在，原有的内容将会被完全覆盖。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "希望写入到文件中的具体文本内容。"
+          },
+          "path": {
+            "type": "string",
+            "description": "要写入文件的完整绝对路径，必须包含文件名和扩展名。例如：'C:\\Users\\Test\\Desktop\\my_note.txt'。"
+          }
+        },
+        "required": [
+          "content",
+          "path"
+        ]
+      }
     }
-]
+  ]
+}

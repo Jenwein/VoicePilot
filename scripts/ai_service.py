@@ -8,13 +8,43 @@ import sys
 from google import genai
 from google.genai import types
 
-# --- 1. 配置 ---
+# --- 1. 日志配置 ---
+def setup_logging():
+    """配置日志输出到文件，保持stdout纯净"""
+    # 创建logs目录（如果不存在）
+    logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    # 配置日志文件路径
+    log_file = os.path.join(logs_dir, "ai_service.log")
+    
+    # 配置日志格式和输出
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file, encoding='utf-8'),
+            # 移除控制台处理器，确保日志不输出到stdout
+        ]
+    )
+    
+    # 禁用所有其他库的控制台日志输出
+    logging.getLogger().handlers = [h for h in logging.getLogger().handlers if not isinstance(h, logging.StreamHandler)]
 
+# 在模块加载时立即设置日志
+setup_logging()
 
+# --- 2. 配置 ---
 try:
     client = genai.Client()
 except KeyError:
     logging.error("请先设置 GEMINI_API_KEY 环境变量。")
+    # 错误信息也通过JSON格式输出到stdout
+    error_result = {
+        "error": "环境变量未设置",
+        "details": "请先设置 GEMINI_API_KEY 环境变量"
+    }
+    print(json.dumps(error_result, ensure_ascii=False))
     exit(1)
 
 # 临时方案，使用gemini的ASR，后期考虑在C++中使用离线STT/ASR
@@ -44,7 +74,7 @@ def handle_audio(args):
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[
-                'Generate a transcript of the speech.',
+                'Transcribe the speech to plain Simplified Chinese text. Output only the transcribed text, without any explanations, tags, or formatting.',
                 types.Part.from_bytes(
                     data=audio_bytes,
                     mime_type='audio/wav',
@@ -265,19 +295,19 @@ def handle_tts(args):
     logging.info(f'收到TTS任务: 文本="{args.text}", 输出到="{audio_file_path}"')
 
     try:
+        # 确保输出目录存在
+        os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
+        
         # 1. 调用 TTS 模型
-        #    参考 TTSexam.py 和 Submodules - Google Gen AI SDK documentation.pdf
-        #    API 参考: Page 189 (GenerateContentConfig), Page 399 (SpeechConfig)
         logging.info("正在向 Gemini TTS API 发送请求...")
         response = client.models.generate_content(
-           model="gemini-2.5-flash-preview-tts", # 使用最新的TTS模型
+           model="gemini-2.5-flash-preview-tts",
            contents=args.text,
            config=types.GenerateContentConfig(
               response_modalities=["AUDIO"],
               speech_config=types.SpeechConfig(
                  voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                       # 您可以在这里选择不同的声音，'Kore' 是一个听起来不错的选择
                        voice_name='Kore',
                     )
                  )
@@ -286,12 +316,13 @@ def handle_tts(args):
         )
 
         # 2. 提取音频数据
-        #    数据位于 response.candidates[0].content.parts[0].inline_data.data
         if response.candidates and response.candidates[0].content.parts and response.candidates[0].content.parts[0].inline_data:
             audio_data = response.candidates[0].content.parts[0].inline_data.data
 
             # 3. 将音频数据写入文件
             write_wave_file(audio_file_path, audio_data)
+            logging.info(f"TTS成功，文件保存到: {audio_file_path}")
+            
             # 以JSON格式返回成功信息
             result = {
                 "status": "success",
@@ -312,6 +343,7 @@ def handle_tts(args):
         }
         logging.error(f"语音合成失败: {str(e)}")
         print(json.dumps(error_result, ensure_ascii=False))
+        exit(1)
 
 # --- 3. 主函数与命令行解析 ---
 
