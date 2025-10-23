@@ -225,12 +225,19 @@ namespace Razel
 		
 		std::string currentRequest = userRequest;
 		std::string previousTurn = m_ConversationHistory;
-		std::string originalUserRequest = userRequest; // 保存原始请求
+		std::string originalUserRequest = userRequest;
+		
+		std::cout << "[AgentCore] === TOOL PROCESSING DEBUG ===" << std::endl;
+		std::cout << "[AgentCore] Original user request: \"" << originalUserRequest << "\"" << std::endl;
+		std::cout << "[AgentCore] Conversation history length: " << m_ConversationHistory.length() << std::endl;
+		std::cout << "[AgentCore] =================================" << std::endl;
 		
 		while (iteration < MAX_ITERATIONS)
 		{
 			iteration++;
-			std::cout << "[AgentCore] LLM iteration " << iteration << std::endl;
+			std::cout << "[AgentCore] === LLM ITERATION " << iteration << " DEBUG ===" << std::endl;
+			std::cout << "[AgentCore] Current request: \"" << currentRequest << "\"" << std::endl;
+			std::cout << "[AgentCore] Previous turn length: " << previousTurn.length() << std::endl;
 			
 			// 调用LLM处理用户请求
 			AIResult llmResult = m_AIServiceWrapper->ProcessUserRequest(
@@ -262,15 +269,18 @@ namespace Razel
 					finalResponse = llmResult.data["response_text"].get<std::string>();
 					std::cout << "[AgentCore] Final response: \"" << finalResponse << "\"" << std::endl;
 					
-					// 更新对话历史，包含原始请求
+					// 更新对话历史
 					nlohmann::json historyData = llmResult.data;
 					historyData["original_user_request"] = originalUserRequest;
 					m_ConversationHistory = historyData.dump();
+					
+					std::cout << "[AgentCore] =================================" << std::endl;
 					return true;
 				}
 				else
 				{
 					std::cerr << "[AgentCore] LLM finished but no response text found." << std::endl;
+					std::cout << "[AgentCore] =================================" << std::endl;
 					return false;
 				}
 			}
@@ -279,17 +289,22 @@ namespace Razel
 				// 需要执行工具调用
 				if (llmResult.data.contains("function_calls"))
 				{
+					std::cout << "[AgentCore] Function calls to execute: " << llmResult.data["function_calls"].dump(2) << std::endl;
+					
 					std::string toolResults;
 					if (!ExecuteToolCalls(llmResult.data["function_calls"], toolResults))
 					{
 						std::cerr << "[AgentCore] Tool execution failed." << std::endl;
+						std::cout << "[AgentCore] =================================" << std::endl;
 						return false;
 					}
+					
+					std::cout << "[AgentCore] Tool execution results: " << toolResults << std::endl;
 					
 					// 将工具执行结果作为下一轮的输入
 					currentRequest = "Tool execution results: " + toolResults;
 					
-					// 构建更完整的previous_turn，包含原始请求
+					// 构建更完整的previous_turn
 					nlohmann::json previousTurnData = llmResult.data;
 					previousTurnData["original_user_request"] = originalUserRequest;
 					previousTurn = previousTurnData.dump();
@@ -299,14 +314,18 @@ namespace Razel
 				else
 				{
 					std::cerr << "[AgentCore] LLM status is 'continue' but no function calls found." << std::endl;
+					std::cout << "[AgentCore] =================================" << std::endl;
 					return false;
 				}
 			}
 			else
 			{
 				std::cerr << "[AgentCore] Unknown LLM status: " << status << std::endl;
+				std::cout << "[AgentCore] =================================" << std::endl;
 				return false;
 			}
+			
+			std::cout << "[AgentCore] =================================" << std::endl;
 		}
 		
 		std::cerr << "[AgentCore] Maximum iterations reached, conversation terminated." << std::endl;

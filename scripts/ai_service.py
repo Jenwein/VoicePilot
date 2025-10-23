@@ -169,8 +169,11 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
             # 后续轮次：需要重建完整的对话历史
             if is_tool_result:
                 # 这是工具执行结果，需要重建对话历史
-                # 1. 原始用户请求（从工具执行结果中提取或使用历史记录）
-                original_request = "现在几点"  # 这里应该从历史中获取，临时硬编码
+                
+                # 1. 从previous_turn_data中获取原始用户请求
+                original_request = previous_turn_data.get('original_user_request', user_request)
+                logging.info(f"重建对话历史，原始请求: {original_request}")
+                
                 contents.append(types.Content(
                     role="user", 
                     parts=[types.Part(text=original_request)]
@@ -203,6 +206,7 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
                                     name=func_name,
                                     response={"result": result_text}
                                 ))
+                                logging.info(f"添加工具执行结果: {func_name} -> {result_text}")
                         
                         if user_parts:
                             contents.append(types.Content(role="user", parts=user_parts))
@@ -290,7 +294,12 @@ def process_user_request(user_request: str, tools_file: str, previous_turn: str 
             result["response_text"] = "抱歉，我无法理解您的请求。"
             result["reasoning"] = "API响应为空或无效"
         
-        # 7. 返回结果
+        # 7. 返回结果 - 保留原始用户请求以便后续使用
+        if previous_turn_data and previous_turn_data.get('original_user_request'):
+            result["original_user_request"] = previous_turn_data['original_user_request']
+        elif not is_tool_result:
+            result["original_user_request"] = user_request
+        
         logging.info(f"返回结果: status={result['status']}, response_text='{result['response_text'][:50]}...', function_calls={len(result['function_calls'])}")
         return result
         

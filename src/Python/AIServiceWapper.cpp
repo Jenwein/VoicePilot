@@ -48,7 +48,7 @@ namespace Razel
 		}
 	}
 
-	Razel::AIResult AIServiceWrapper::TranscribeAudio(const std::string& audioFilePath /*= ""*/)
+	Razel::AIResult AIServiceWrapper::TranscribeAudio(const std::string& audioFilePath)
 	{
 		if (!m_Initialized)
 		{
@@ -61,11 +61,17 @@ namespace Razel
 
 		try
 		{
+			std::cout << "[AIServiceWrapper] === ASR CALL DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Audio file path: " << audioFilePath << std::endl;
+			
 			nlohmann::json args;
 			if (!audioFilePath.empty())
 			{
 				args["audio_file_path"] = audioFilePath;
 			}
+			
+			std::cout << "[AIServiceWrapper] ASR args: " << args.dump(2) << std::endl;
+			std::cout << "[AIServiceWrapper] ==========================" << std::endl;
 
 			return CallPythonFunction("transcribe_audio", args);
 		}
@@ -80,7 +86,9 @@ namespace Razel
 		}
 	}
 
-	Razel::AIResult AIServiceWrapper::ProcessUserRequest(const std::string& userRequest, const std::string& toolsFile, const std::string& previousTurn /*= ""*/)
+	Razel::AIResult AIServiceWrapper::ProcessUserRequest(const std::string& userRequest, 
+                                            const std::string& toolsFile, 
+                                            const std::string& previousTurn)
 	{
 		if (!m_Initialized)
 		{
@@ -93,6 +101,15 @@ namespace Razel
 
 		try
 		{
+			std::cout << "[AIServiceWrapper] === LLM CALL DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] User request: \"" << userRequest << "\"" << std::endl;
+			std::cout << "[AIServiceWrapper] Tools file: " << toolsFile << std::endl;
+			std::cout << "[AIServiceWrapper] Previous turn length: " << (previousTurn.empty() ? 0 : previousTurn.length()) << std::endl;
+			if (!previousTurn.empty())
+			{
+				std::cout << "[AIServiceWrapper] Previous turn: " << previousTurn << std::endl;
+			}
+			
 			nlohmann::json args;
 			args["user_request"] = userRequest;
 			args["tools_file"] = toolsFile;
@@ -100,6 +117,9 @@ namespace Razel
 			{
 				args["previous_turn"] = previousTurn;
 			}
+
+			std::cout << "[AIServiceWrapper] LLM args: " << args.dump(2) << std::endl;
+			std::cout << "[AIServiceWrapper] ==========================" << std::endl;
 
 			return CallPythonFunction("process_user_request", args);
 		}
@@ -114,7 +134,8 @@ namespace Razel
 		}
 	}
 
-	Razel::AIResult AIServiceWrapper::SynthesizeSpeech(const std::string& text, const std::string& outputFilePath /*= ""*/)
+	Razel::AIResult AIServiceWrapper::SynthesizeSpeech(const std::string& text, 
+                                                  const std::string& outputFilePath)
 	{
 		if (!m_Initialized)
 		{
@@ -127,12 +148,19 @@ namespace Razel
 
 		try
 		{
+			std::cout << "[AIServiceWrapper] === TTS CALL DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Text to synthesize: \"" << text << "\"" << std::endl;
+			std::cout << "[AIServiceWrapper] Output file path: " << outputFilePath << std::endl;
+			
 			nlohmann::json args;
 			args["text"] = text;
 			if (!outputFilePath.empty())
 			{
 				args["output_file_path"] = outputFilePath;
 			}
+
+			std::cout << "[AIServiceWrapper] TTS args: " << args.dump(2) << std::endl;
+			std::cout << "[AIServiceWrapper] ==========================" << std::endl;
 
 			return CallPythonFunction("synthesize_speech", args);
 		}
@@ -147,10 +175,16 @@ namespace Razel
 		}
 	}
 
-	Razel::AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
+	Razel::AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, 
+                                            const nlohmann::json& args)
 	{
 		try
 		{
+			std::cout << "[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Function: " << functionName << std::endl;
+			std::cout << "[AIServiceWrapper] Arguments: " << args.dump(2) << std::endl;
+			std::cout << "[AIServiceWrapper] ========================================" << std::endl;
+			
 			py::object pyFunction = m_AIServiceModule.attr(functionName.c_str());
 			py::object pyResult;
 
@@ -187,7 +221,18 @@ namespace Razel
 				pyResult = pyFunction(**pyArgs);
 			}
 
-			return ConvertPythonResult(pyResult);
+			AIResult result = ConvertPythonResult(pyResult);
+			
+			std::cout << "[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Success: " << (result.IsSuccess() ? "true" : "false") << std::endl;
+			if (!result.IsSuccess())
+			{
+				std::cout << "[AIServiceWrapper] Error: " << result.GetErrorMessage() << std::endl;
+			}
+			std::cout << "[AIServiceWrapper] Result Data: " << result.data.dump(2) << std::endl;
+			std::cout << "[AIServiceWrapper] ===========================================" << std::endl;
+			
+			return result;
 		}
 		catch (const py::error_already_set& e)
 		{
@@ -196,6 +241,12 @@ namespace Razel
 			result.error_type = "Python Error";
 			result.error_details = e.what();
 			SetLastError("Python function call failed: " + std::string(e.what()));
+			
+			std::cout << "[AIServiceWrapper] === AI FUNCTION ERROR DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Function: " << functionName << std::endl;
+			std::cout << "[AIServiceWrapper] Python Error: " << e.what() << std::endl;
+			std::cout << "[AIServiceWrapper] ==========================================" << std::endl;
+			
 			return result;
 		}
 		catch (const std::exception& e)
@@ -205,6 +256,12 @@ namespace Razel
 			result.error_type = "Function Call Error";
 			result.error_details = e.what();
 			SetLastError("Function call failed: " + std::string(e.what()));
+			
+			std::cout << "[AIServiceWrapper] === AI FUNCTION ERROR DEBUG ===" << std::endl;
+			std::cout << "[AIServiceWrapper] Function: " << functionName << std::endl;
+			std::cout << "[AIServiceWrapper] C++ Error: " << e.what() << std::endl;
+			std::cout << "[AIServiceWrapper] ==========================================" << std::endl;
+			
 			return result;
 		}
 	}

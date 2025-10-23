@@ -1,4 +1,26 @@
-// LLM阶段
+//工具函数调用格式要求(定义函数声明):
+```json
+{
+    "name": "set_light_values",
+    "description": "Sets the brightness and color temperature of a light.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "brightness": {
+                "type": "integer",
+                "description": "Light level from 0 to 100. Zero is off and 100 is full brightness",
+            },
+            "color_temp": {
+                "type": "string",
+                "enum": ["daylight", "cool", "warm"],
+                "description": "Color temperature of the light fixture, which can be `daylight`, `cool` or `warm`.",
+            },
+        },
+        "required": ["brightness", "color_temp"],
+    },
+```
+
+// LLM阶段函数调用格式要求:
 ```json
 // 输入格式
 {
