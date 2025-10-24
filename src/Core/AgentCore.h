@@ -1,5 +1,7 @@
 #pragma once
 #include <Razel.h>
+#include <functional>
+#include "VoiceProcessingPipeline.h"
 #include "../Audio/AudioManager.h"
 #include "../Python/AIServiceWrapper.h"
 
@@ -7,42 +9,57 @@ namespace Razel
 {
     enum class AgentState
     {
-        Idle, Listening, Processing, Speaking
+		Idle,
+		Listening,
+		Processing,
+		Speaking
+    };
+
+    // 配置结构体
+    struct VoiceAssistantConfig
+    {
+        std::string inputAudioPath = "Resources/audios/input.wav";
+        std::string outputAudioPath = "Resources/audios/output.wav";
+        std::string toolDefsPath = "Resources/prompts/toolDefsPrompt.json";
+        int maxProcessingTimeoutSeconds = 30;
     };
 
     class AgentCore
     {
     public:
         AgentCore();
+        AgentCore(const VoiceAssistantConfig& config);
         ~AgentCore();
 
         void OnUpdate();
 
-        void ToggleRecordingAndProcess(); // 切换录音状态并处理
+		void StartListening();  // 开始录音
+		void StopListening();   // 停止录音，自动开始处理
+		void CancelOperation(); // 取消当前操作
         
-        bool CanStartNewConversation() const { return m_CurrentState == AgentState::Idle; }
         AgentState GetCurrentState() const { return m_CurrentState; }
+        bool CanStartNewSession() const { return m_CurrentState == AgentState::Idle; }
+        
+        void SetStateChangeCallback(std::function<void(AgentState, AgentState)> callback);
 
-        void ProcessAudio(const std::string& audioFilePath);//TMP:PUBLIC
+        // 核心处理流程 /TODO:测试,临时public
+        void ProcessVoiceRequest();
+
     private:
-		void RegisterAllTools();                                                // 注册所有工具
-        void GenerateAndSpeakResponse(const std::string& toolResult);           // 生成并播放语音回复
-        void SaveToolDefinitionsToFile();                                       // 保存工具定义到文件
+		void ChangeState(AgentState newState);
+		bool CanTransitionTo(AgentState newState) const;
 
-		bool ProcessUserRequestWithChat(const std::string& userRequest, std::string& finalResponse);    // 处理用户请求与Chat交互
-		bool ExecuteToolCalls(const nlohmann::json& functionCalls, nlohmann::json& toolResults);        // 执行工具调用
-		std::string ExecuteSingleTool(const std::string& toolName, const nlohmann::json& parameters);   // 执行单个工具
+        void HandleError(const std::string& errorMessage);
 
+        void OnPipelineStageChanged(PipelineStage stage, const std::string& message);
+        void SaveToolDefinitionsToFile();
     private:
         AgentState m_CurrentState;
+        VoiceAssistantConfig m_Config;
+        std::function<void(AgentState, AgentState)> m_StateChangeCallback;
+
         Scope<AudioManager> m_AudioManager;
         Scope<AIServiceWrapper> m_AIServiceWrapper;
-
-        const std::string m_InputAudioPath = "Resources/audios/input.wav";
-        const std::string m_OutputAudioPath = "Resources/audios/output.wav";
-        const std::string m_ToolDefsFilePath = "Resources/prompts/toolDefsPrompt.json";
-
-        // Chat会话状态
-        bool m_ChatSessionActive = false;
+        Scope<VoiceProcessingPipeline> m_Pipeline;
     };
 }

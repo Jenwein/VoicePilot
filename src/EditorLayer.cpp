@@ -257,7 +257,8 @@ namespace Razel {
 		ImGui::Begin("TODO");
 		if (ImGui::Button("test_ExecPython"))
 		{
-			m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			//m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			m_AgentCore->ProcessVoiceRequest();
 		}
 		
 		//TODO:
@@ -347,11 +348,17 @@ namespace Razel {
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
-		// 例如, 我们用 'R' 键来开始/停止录音
 		if (e.GetKeyCode() == Key::R && e.GetRepeatCount() == 0) 
 		{
-			m_AgentCore->ToggleRecordingAndProcess();
-			return true; // 事件已处理
+			if (m_AgentCore->CanStartNewSession()) {
+				if (m_AgentCore->GetCurrentState() == AgentState::Idle) {
+					m_AgentCore->StartListening();
+				}
+				else if (m_AgentCore->GetCurrentState() == AgentState::Listening) {
+					m_AgentCore->StopListening();
+				}
+			}
+			return true;
 		}
 		return false;
 	}

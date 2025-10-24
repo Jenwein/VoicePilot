@@ -11,7 +11,6 @@ namespace Razel
 
     AIServiceWrapper::~AIServiceWrapper()
     {
-        // 确保销毁Chat会话
         if (m_ChatSessionActive)
         {
             DestroyChatSession();
@@ -248,14 +247,13 @@ namespace Razel
 
         if (!m_ChatSessionActive)
         {
-            return true; // 已经销毁
+            return true;
         }
 
         try
         {
             std::cout << "[AIServiceWrapper] === DESTROY CHAT SESSION DEBUG ===" << std::endl;
             
-            // 调用Python销毁Chat会话
             py::object pyFunction = m_AIServiceModule.attr("destroy_chat_session");
             py::object pyResult = pyFunction();
             
@@ -328,8 +326,7 @@ namespace Razel
     }
 
     // === 私有方法 (简化版) ===
-    AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, 
-                                            const nlohmann::json& args)
+    AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
     {
         try
         {
