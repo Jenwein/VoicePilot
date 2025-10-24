@@ -12,7 +12,7 @@
 
 #include <thread>
 
-#include "Python/PythonManager.h"
+
 
 namespace Razel {
 
@@ -44,6 +44,7 @@ namespace Razel {
 		m_EditorCamera = EditorCamera(30.0f, 1.778f, 0.1f, 1000.0f);
 
 		m_AgentCore = CreateScope<AgentCore>();
+		m_GilGuard = CreateScope<PythonCILRelease>();
 		//m_AgentCore->Init();
 
 		// TODO:创建语音助手的3D模型实体
@@ -63,6 +64,7 @@ namespace Razel {
 	void EditorLayer::OnDetach()
 	{
 		RZ_PROFILE_FUNCTION();
+		m_GilGuard.reset();
 	}
 
 	void EditorLayer::OnUpdate(Timestep ts)

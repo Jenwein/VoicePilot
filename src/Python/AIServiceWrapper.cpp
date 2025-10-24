@@ -108,6 +108,8 @@ namespace Razel
 
         try
         {
+			PythonCILAcquire pythonScope;
+
             std::cout << "[AIServiceWrapper] === CREATE CHAT SESSION DEBUG ===" << std::endl;
             std::cout << "[AIServiceWrapper] Tools file: " << toolsFile << std::endl;
             
@@ -252,6 +254,8 @@ namespace Razel
 
         try
         {
+			PythonCILAcquire pythonScope;
+
             std::cout << "[AIServiceWrapper] === DESTROY CHAT SESSION DEBUG ===" << std::endl;
             
             py::object pyFunction = m_AIServiceModule.attr("destroy_chat_session");
@@ -328,8 +332,11 @@ namespace Razel
     // === 私有方法 (简化版) ===
     AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
     {
+		PythonCILAcquire pythonScope;
+
         try
         {
+            py::gil_scoped_acquire acquire;
             std::cout << "[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===" << std::endl;
             std::cout << "[AIServiceWrapper] Function: " << functionName << std::endl;
             std::cout << "[AIServiceWrapper] Arguments: " << args.dump(2) << std::endl;

@@ -6,6 +6,7 @@
 #include "Razel/Renderer/EditorCamera.h"
 #include "Core/AgentCore.h"
 
+#include "Python/PythonManager.h"
 namespace Razel {
 
 	class EditorLayer : public Layer
@@ -87,6 +88,8 @@ namespace Razel {
 		// Editor resources
 		Ref<Texture2D> m_IconPlay, m_IconStop;
 
+
+		Scope<PythonCILRelease> m_GilGuard;
 		Scope<AgentCore> m_AgentCore;
 		Entity m_VoiceAssistantEntity;
 
