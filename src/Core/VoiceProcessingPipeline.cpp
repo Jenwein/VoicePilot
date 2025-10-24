@@ -84,17 +84,6 @@ namespace Razel
             ~ProcessingGuard() { processing.store(false); }
         } guard(m_Processing);
 
-		if (!m_AIServiceWrapper->Initialize())
-		{
-			std::cerr << "[AgentCore] Failed to initialize AI Service: "
-				<< m_AIServiceWrapper->GetLastError() << std::endl;
-		}
-		else
-		{
-			std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
-		}
-
-
         try
         {
             // 步骤1: ASR

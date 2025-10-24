@@ -24,15 +24,15 @@ namespace Razel
         m_AudioManager = CreateScope<AudioManager>();
         m_AIServiceWrapper = CreateScope<AIServiceWrapper>();
 
-        //if (!m_AIServiceWrapper->Initialize())
-        //{
-        //    std::cerr << "[AgentCore] Failed to initialize AI Service: "
-        //        << m_AIServiceWrapper->GetLastError() << std::endl;
-        //}
-        //else
-        //{
-        //    std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
-        //}
+        if (!m_AIServiceWrapper->Initialize())
+        {
+            std::cerr << "[AgentCore] Failed to initialize AI Service: "
+                << m_AIServiceWrapper->GetLastError() << std::endl;
+        }
+        else
+        {
+            std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
+        }
 
         // 创建Pipeline
         m_Pipeline = CreateScope<VoiceProcessingPipeline>(m_AudioManager.get(), m_AIServiceWrapper.get());
