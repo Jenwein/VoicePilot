@@ -19,11 +19,7 @@ namespace Razel {
 		std::time_t now_c = std::chrono::system_clock::to_time_t(now);
 		std::tm now_tm;
 
-#ifdef _WIN32
 		localtime_s(&now_tm, &now_c);
-#else
-		localtime_r(&now_c, &now_tm);
-#endif
 
 		std::stringstream ss;
 		ss << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
@@ -99,7 +95,6 @@ namespace Razel {
 		}
 		std::string folderName = args["folder_name"].get<std::string>();
 
-#ifdef _WIN32
 		KNOWNFOLDERID folderId;
 		if (folderName == "desktop") {
 			folderId = FOLDERID_Desktop;
@@ -128,26 +123,6 @@ namespace Razel {
 		else {
 			return "Error: Failed to get known folder path.";
 		}
-#else
-		const char* home = getenv("HOME");
-		if (home == nullptr) {
-			return "Error: Could not get HOME environment variable.";
-		}
-		std::string path(home);
-		if (folderName == "desktop") {
-			path += "/Desktop";
-		}
-		else if (folderName == "documents") {
-			path += "/Documents";
-		}
-		else if (folderName == "downloads") {
-			path += "/Downloads";
-		}
-		else {
-			return "Error: Unsupported folder name. Use 'desktop', 'documents', or 'downloads'.";
-		}
-		return "Success: " + path;
-#endif
 	}
 
 	nlohmann::json GetKnownFolderPathTool::GetDefinition() const {
@@ -159,7 +134,7 @@ namespace Razel {
 				{"properties", {
 					{"folder_name", {
 						{"type", "string"},
-						{"description", "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'."}
+						{"description", "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads','pictures', 'music', 'videos'."}
 					}}
 				}},
 				{"required", {"folder_name"}}
