@@ -1,4 +1,4 @@
-# ai_service.py - 修改为支持pybind11调用的版本
+# ai_service.py - 使用Gemini Chat重构版本
 import os
 import json
 import wave
@@ -40,19 +40,230 @@ def _get_client():
         logging.error("请先设置 GEMINI_API_KEY 环境变量。")
         raise RuntimeError("环境变量未设置：请先设置 GEMINI_API_KEY 环境变量")
 
-# --- 3. 核心功能函数 ---
+# --- 3. Chat Session 管理 ---
+class ChatSession:
+    """管理单次对话会话的Chat实例"""
+    
+    def __init__(self, tools_file: str = None):
+        """
+        初始化Chat会话
+        
+        Args:
+            tools_file (str, optional): 工具定义文件路径
+        """
+        self.client = _get_client()
+        self.chat = None
+        self.tools_file = tools_file
+        self._initialize_chat()
+        logging.info("Chat会话已初始化")
+    
+    def _initialize_chat(self):
+        """初始化Chat实例，配置工具和系统指令"""
+        try:
+            # 加载工具定义
+            tools = None
+            if self.tools_file and os.path.exists(self.tools_file):
+                with open(self.tools_file, 'r', encoding='utf-8') as f:
+                    tools_data = json.load(f)
+                    
+                    # 处理不同格式的工具定义
+                    if isinstance(tools_data, list):
+                        tools_definitions = tools_data
+                    elif isinstance(tools_data, dict) and 'tools' in tools_data:
+                        tools_definitions = tools_data['tools']
+                    else:
+                        tools_definitions = [tools_data] if isinstance(tools_data, dict) else []
+                    
+                    if tools_definitions:
+                        function_declarations = []
+                        for tool in tools_definitions:
+                            function_declarations.append(types.FunctionDeclaration(
+                                name=tool["name"],
+                                description=tool["description"],
+                                parameters=tool["parameters"]
+                            ))
+                        tools = [types.Tool(function_declarations=function_declarations)]
+                        logging.info(f"加载了 {len(function_declarations)} 个工具定义")
+            
+            # 创建Chat实例
+            config = types.GenerateContentConfig(
+                tools=tools,
+                system_instruction="你是一个智能语音助手。根据用户的请求，分析需要执行的操作，选择合适的工具来完成任务。如果需要多个步骤，请逐步调用相应的工具。当所有必要的信息都收集完成后，提供简洁明确的最终回复。",
+                temperature=0.1
+            )
+            
+            self.chat = self.client.chats.create(
+                model="gemini-2.5-flash",
+                config=config
+            )
+            
+        except Exception as e:
+            logging.error(f"Chat初始化失败: {e}")
+            raise RuntimeError(f"Chat初始化失败: {e}")
+    
+    def send_message(self, message: str) -> dict:
+        """
+        发送消息给Chat
+        
+        Args:
+            message (str): 用户消息或工具结果
+            
+        Returns:
+            dict: 处理结果
+        """
+        try:
+            logging.info(f"向Chat发送消息: {message[:100]}...")
+            
+            response = self.chat.send_message(message)
+            
+            # 解析响应
+            result = {
+                "status": "finished",
+                "function_calls": [],
+                "response_text": "",
+                "reasoning": ""
+            }
+            
+            # 检查是否有function call
+            if (response.candidates and 
+                response.candidates[0].content.parts):
+                
+                has_function_calls = False
+                response_text_parts = []
+                
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        has_function_calls = True
+                        result["function_calls"].append({
+                            "name": part.function_call.name,
+                            "args": dict(part.function_call.args)
+                        })
+                        logging.info(f"检测到工具调用: {part.function_call.name}")
+                    elif hasattr(part, 'text') and part.text:
+                        response_text_parts.append(part.text)
+                
+                # 设置状态和结果
+                if has_function_calls:
+                    result["status"] = "continue"
+                    result["reasoning"] = "需要执行工具调用"
+                else:
+                    # 没有工具调用，收集文本响应
+                    if response_text_parts:
+                        result["response_text"] = " ".join(response_text_parts).strip()
+                    elif response.text:
+                        result["response_text"] = response.text.strip()
+                    else:
+                        result["response_text"] = "我理解了您的请求。"
+                    result["reasoning"] = "对话结束，返回最终回复"
+            
+            else:
+                # 没有有效响应
+                result["response_text"] = "抱歉，我无法理解您的请求。"
+                result["reasoning"] = "API响应为空或无效"
+            
+            logging.info(f"Chat响应: status={result['status']}, function_calls={len(result['function_calls'])}")
+            return result
+            
+        except Exception as e:
+            logging.error(f"Chat消息发送失败: {e}")
+            return {
+                "error": "Chat消息发送失败",
+                "details": str(e)
+            }
+    
+    def send_function_results(self, function_results: list) -> dict:
+        """
+        发送工具执行结果给Chat
+        
+        Args:
+            function_results (list): 工具执行结果列表
+            
+        Returns:
+            dict: Chat响应
+        """
+        try:
+            # 构建工具结果消息
+            parts = []
+            for result_info in function_results:
+                func_name = result_info.get('name')
+                result_data = result_info.get('result', 'No result')
+                
+                if func_name:
+                    parts.append(types.Part.from_function_response(
+                        name=func_name,
+                        response={"result": result_data}
+                    ))
+                    logging.info(f"添加工具执行结果: {func_name}")
+            
+            if not parts:
+                logging.warning("没有有效的工具执行结果")
+                return {
+                    "error": "工具结果为空",
+                    "details": "没有有效的工具执行结果"
+                }
+            
+            # 发送工具结果
+            logging.info("向Chat发送工具执行结果...")
+            response = self.chat.send_message(parts)
+            
+            # 解析响应（与send_message相同的逻辑）
+            result = {
+                "status": "finished",
+                "function_calls": [],
+                "response_text": "",
+                "reasoning": ""
+            }
+            
+            if (response.candidates and 
+                response.candidates[0].content.parts):
+                
+                has_function_calls = False
+                response_text_parts = []
+                
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        has_function_calls = True
+                        result["function_calls"].append({
+                            "name": part.function_call.name,
+                            "args": dict(part.function_call.args)
+                        })
+                        logging.info(f"检测到后续工具调用: {part.function_call.name}")
+                    elif hasattr(part, 'text') and part.text:
+                        response_text_parts.append(part.text)
+                
+                if has_function_calls:
+                    result["status"] = "continue"
+                    result["reasoning"] = "需要执行更多工具调用"
+                else:
+                    if response_text_parts:
+                        result["response_text"] = " ".join(response_text_parts).strip()
+                    elif response.text:
+                        result["response_text"] = response.text.strip()
+                    else:
+                        result["response_text"] = "任务已完成。"
+                    result["reasoning"] = "所有工具执行完成，返回最终结果"
+            
+            logging.info(f"工具结果处理完成: status={result['status']}")
+            return result
+            
+        except Exception as e:
+            logging.error(f"工具结果发送失败: {e}")
+            return {
+                "error": "工具结果发送失败",
+                "details": str(e)
+            }
+
+# --- 4. 核心功能函数 (重构版) ---
 
 def transcribe_audio(audio_file_path: str = None) -> dict:
     """
-    音频转录函数
+    音频转录函数 (保持不变)
     
     Args:
         audio_file_path (str, optional): 音频文件路径，默认为 Resources/audios/input.wav
     
     Returns:
         dict: 包含转录结果的字典
-            成功: {"status": "success", "transcript": "转录文本"}
-            失败: {"error": "错误类型", "details": "错误详情"}
     """
     if audio_file_path is None:
         audio_file_path = os.path.join("Resources", "audios", "input.wav")
@@ -60,7 +271,6 @@ def transcribe_audio(audio_file_path: str = None) -> dict:
     logging.info(f'收到音频转录请求: 文件路径={audio_file_path}')
     
     try:
-        # 检查音频文件是否存在
         if not os.path.exists(audio_file_path):
             error_msg = f"音频文件未找到: {audio_file_path}"
             logging.error(error_msg)
@@ -69,12 +279,9 @@ def transcribe_audio(audio_file_path: str = None) -> dict:
                 "details": f"文件路径: {audio_file_path}"
             }
         
-        # 读取音频文件并转换为字节数据
-        logging.info("正在读取音频文件...")
         with open(audio_file_path, 'rb') as f:
             audio_bytes = f.read()
         
-        # 获取客户端并调用 Gemini API 进行音频转录
         client = _get_client()
         logging.info("正在调用 Gemini ASR API...")
         response = client.models.generate_content(
@@ -88,7 +295,6 @@ def transcribe_audio(audio_file_path: str = None) -> dict:
             ]
         )
         
-        # 提取转录文本
         if response.text:
             transcript = response.text.strip()
             logging.info(f"转录成功: {transcript}")
@@ -112,220 +318,100 @@ def transcribe_audio(audio_file_path: str = None) -> dict:
             "details": str(e)
         }
 
-def process_user_request(user_request: str, tools_file: str, previous_turn: str = None) -> dict:
+def create_chat_session(tools_file: str) -> str:
     """
-    处理用户请求并规划操作
+    创建新的Chat会话
     
     Args:
-        user_request (str): 用户请求文本
-        tools_file (str): 包含Tools定义的JSON文件路径
-        previous_turn (str, optional): 上一轮操作JSON字符串
-    
+        tools_file (str): 工具定义文件路径
+        
     Returns:
-        dict: 包含处理结果的字典
-            成功: {"status": "continue/finished", "function_calls": [...], "response_text": "...", "reasoning": "..."}
-            失败: {"error": "错误类型", "details": "错误详情"}
+        str: 会话ID (实际返回"success"表示创建成功)
     """
-    logging.info(f'收到理解请求: 用户请求="{user_request}", tools_file="{tools_file}", previous_turn="{previous_turn}"')
+    try:
+        # 这里我们使用全局变量来存储chat session
+        # 在实际应用中，你可能需要更复杂的会话管理
+        global _current_chat_session
+        _current_chat_session = ChatSession(tools_file)
+        logging.info("Chat会话创建成功")
+        return "success"
+    except Exception as e:
+        logging.error(f"Chat会话创建失败: {e}")
+        return f"error: {e}"
+
+def process_user_message(user_message: str) -> dict:
+    """
+    处理用户消息 (使用Chat)
+    
+    Args:
+        user_message (str): 用户消息
+        
+    Returns:
+        dict: 处理结果
+    """
+    global _current_chat_session
+    
+    if not _current_chat_session:
+        return {
+            "error": "Chat会话未初始化",
+            "details": "请先调用create_chat_session"
+        }
     
     try:
-        # 1. 加载工具定义
-        tools_definitions = []
-        if tools_file and os.path.exists(tools_file):
-            with open(tools_file, 'r', encoding='utf-8') as f:
-                tools_data = json.load(f)
-                
-                if isinstance(tools_data, list):
-                    tools_definitions = tools_data
-                elif isinstance(tools_data, dict) and 'tools' in tools_data:
-                    tools_definitions = tools_data['tools']
-                else:
-                    tools_definitions = [tools_data] if isinstance(tools_data, dict) else []
-                
-                logging.info(f"加载了 {len(tools_definitions)} 个工具定义")
-        
-        # 2. 解析上一轮的结果
-        previous_turn_data = None
-        if previous_turn:
-            try:
-                previous_turn_data = json.loads(previous_turn)
-                logging.info("解析了上一轮操作结果")
-            except json.JSONDecodeError as e:
-                logging.warning(f"无法解析上一轮操作JSON: {e}")
-        
-        # 3. 构建对话内容
-        contents = []
-        
-        # 检查是否是工具执行结果的回调
-        is_tool_result = user_request.startswith("Tool execution results:")
-        
-        if not previous_turn_data:
-            # 第一轮：直接添加用户请求
-            contents.append(types.Content(
-                role="user", 
-                parts=[types.Part(text=user_request)]
-            ))
-        else:
-            # 后续轮次：需要重建完整的对话历史
-            if is_tool_result:
-                # 这是工具执行结果，需要重建对话历史
-                
-                # 1. 从previous_turn_data中获取原始用户请求
-                original_request = previous_turn_data.get('original_user_request', user_request)
-                logging.info(f"重建对话历史，原始请求: {original_request}")
-                
-                contents.append(types.Content(
-                    role="user", 
-                    parts=[types.Part(text=original_request)]
-                ))
-                
-                # 2. 模型的function call响应
-                if previous_turn_data.get('function_calls'):
-                    model_parts = []
-                    for func_call in previous_turn_data['function_calls']:
-                        model_parts.append(types.Part(
-                            function_call=types.FunctionCall(
-                                name=func_call['name'],
-                                args=func_call['args']
-                            )
-                        ))
-                    contents.append(types.Content(role="model", parts=model_parts))
-                    
-                    # 3. 解析工具执行结果
-                    try:
-                        # 从 "Tool execution results: [...]" 中提取JSON
-                        results_json = user_request.replace("Tool execution results: ", "")
-                        tool_results = json.loads(results_json)
-                        
-                        user_parts = []
-                        for i, result_info in enumerate(tool_results):
-                            if i < len(previous_turn_data['function_calls']):
-                                func_name = previous_turn_data['function_calls'][i]['name']
-                                result_text = result_info.get('result', 'No result')
-                                user_parts.append(types.Part.from_function_response(
-                                    name=func_name,
-                                    response={"result": result_text}
-                                ))
-                                logging.info(f"添加工具执行结果: {func_name} -> {result_text}")
-                        
-                        if user_parts:
-                            contents.append(types.Content(role="user", parts=user_parts))
-                    except Exception as e:
-                        logging.error(f"解析工具执行结果失败: {e}")
-                        # 如果解析失败，直接添加文本结果
-                        contents.append(types.Content(
-                            role="user", 
-                            parts=[types.Part(text=user_request)]
-                        ))
-            else:
-                # 普通的后续请求
-                contents.append(types.Content(
-                    role="user", 
-                    parts=[types.Part(text=user_request)]
-                ))
-        
-        # 4. 配置工具
-        tools = None
-        config = None
-        if tools_definitions:
-            function_declarations = []
-            for tool in tools_definitions:
-                function_declarations.append({
-                    "name": tool["name"],
-                    "description": tool["description"],
-                    "parameters": tool["parameters"]
-                })
-            
-            tools = types.Tool(function_declarations=function_declarations)
-            config = types.GenerateContentConfig(tools=[tools])
-        
-        # 5. 调用 Gemini API
-        client = _get_client()
-        logging.info("正在调用 Gemini API...")
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-            config=config
-        )
-        
-        # 6. 解析响应
-        result = {
-            "status": "finished",
-            "function_calls": [],
-            "response_text": "",
-            "reasoning": ""
-        }
-        
-        # 检查是否有 function call
-        if (response.candidates and 
-            response.candidates[0].content.parts):
-            
-            has_function_calls = False
-            response_text_parts = []
-            
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, 'function_call') and part.function_call:
-                    has_function_calls = True
-                    result["function_calls"].append({
-                        "name": part.function_call.name,
-                        "args": dict(part.function_call.args)
-                    })
-                    logging.info(f"检测到工具调用: {part.function_call.name}")
-                elif hasattr(part, 'text') and part.text:
-                    response_text_parts.append(part.text)
-            
-            # 如果有工具调用，状态设为 continue
-            if has_function_calls:
-                result["status"] = "continue"
-                result["reasoning"] = "需要执行工具调用"
-            else:
-                # 没有工具调用，提取文本响应
-                if response_text_parts:
-                    result["response_text"] = " ".join(response_text_parts).strip()
-                    result["reasoning"] = "对话结束，返回最终回复"
-                elif response.text:
-                    result["response_text"] = response.text.strip()
-                    result["reasoning"] = "对话结束，返回最终回复"
-                else:
-                    result["response_text"] = "我理解了您的请求。"
-                    result["reasoning"] = "未获取到文本响应，使用默认回复"
-        else:
-            # 没有有效响应
-            result["response_text"] = "抱歉，我无法理解您的请求。"
-            result["reasoning"] = "API响应为空或无效"
-        
-        # 7. 返回结果 - 保留原始用户请求以便后续使用
-        if previous_turn_data and previous_turn_data.get('original_user_request'):
-            result["original_user_request"] = previous_turn_data['original_user_request']
-        elif not is_tool_result:
-            result["original_user_request"] = user_request
-        
-        logging.info(f"返回结果: status={result['status']}, response_text='{result['response_text'][:50]}...', function_calls={len(result['function_calls'])}")
-        return result
-        
-    except FileNotFoundError:
-        error_msg = f"工具定义文件未找到: {tools_file}"
-        logging.error(error_msg)
+        return _current_chat_session.send_message(user_message)
+    except Exception as e:
+        logging.error(f"用户消息处理失败: {e}")
         return {
-            "error": "工具定义文件未找到",
-            "details": f"文件路径: {tools_file}"
+            "error": "用户消息处理失败",
+            "details": str(e)
         }
+
+def send_tool_results(tool_results_json: str) -> dict:
+    """
+    发送工具执行结果
+    
+    Args:
+        tool_results_json (str): 工具执行结果的JSON字符串
         
+    Returns:
+        dict: Chat响应
+    """
+    global _current_chat_session
+    
+    if not _current_chat_session:
+        return {
+            "error": "Chat会话未初始化",
+            "details": "请先调用create_chat_session"
+        }
+    
+    try:
+        # 解析工具结果JSON
+        tool_results = json.loads(tool_results_json)
+        return _current_chat_session.send_function_results(tool_results)
     except json.JSONDecodeError as e:
-        error_msg = f"JSON解析失败: {str(e)}"
-        logging.error(error_msg)
+        logging.error(f"工具结果JSON解析失败: {e}")
         return {
             "error": "JSON解析失败",
             "details": str(e)
         }
-        
     except Exception as e:
-        error_msg = f"LLM处理失败: {str(e)}"
-        logging.error(error_msg)
+        logging.error(f"工具结果发送失败: {e}")
         return {
-            "error": "LLM处理失败",
+            "error": "工具结果发送失败",
             "details": str(e)
         }
+
+def destroy_chat_session() -> str:
+    """
+    销毁Chat会话
+    
+    Returns:
+        str: "success" 表示成功
+    """
+    global _current_chat_session
+    _current_chat_session = None
+    logging.info("Chat会话已销毁")
+    return "success"
 
 def _write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_width: int = 2, rate: int = 24000):
     """将原始PCM数据写入WAV文件"""
@@ -337,16 +423,14 @@ def _write_wave_file(filename: str, pcm_data: bytes, channels: int = 1, sample_w
 
 def synthesize_speech(text: str, output_file_path: str = None) -> dict:
     """
-    文本转语音函数
+    文本转语音函数 (保持不变)
     
     Args:
         text (str): 需要转换为语音的文本
-        output_file_path (str, optional): 输出音频文件路径，默认为 Resources/audios/output.wav
+        output_file_path (str, optional): 输出音频文件路径
     
     Returns:
         dict: 包含合成结果的字典
-            成功: {"status": "success", "message": "语音文件已成功保存到: path"}
-            失败: {"error": "错误类型", "details": "错误详情"}
     """
     if output_file_path is None:
         output_file_path = os.path.join("Resources", "audios", "output.wav")
@@ -354,10 +438,8 @@ def synthesize_speech(text: str, output_file_path: str = None) -> dict:
     logging.info(f'收到TTS任务: 文本="{text}", 输出到="{output_file_path}"')
 
     try:
-        # 确保输出目录存在
         os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         
-        # 1. 调用 TTS 模型
         client = _get_client()
         logging.info("正在向 Gemini TTS API 发送请求...")
         response = client.models.generate_content(
@@ -375,11 +457,8 @@ def synthesize_speech(text: str, output_file_path: str = None) -> dict:
            )
         )
 
-        # 2. 提取音频数据
         if response.candidates and response.candidates[0].content.parts and response.candidates[0].content.parts[0].inline_data:
             audio_data = response.candidates[0].content.parts[0].inline_data.data
-
-            # 3. 将音频数据写入文件
             _write_wave_file(output_file_path, audio_data)
             logging.info(f"TTS成功，文件保存到: {output_file_path}")
             
@@ -388,7 +467,6 @@ def synthesize_speech(text: str, output_file_path: str = None) -> dict:
                 "message": f"语音文件已成功保存到: {output_file_path}"
             }
         else:
-            # 如果API没有返回预期的音频数据
             error_msg = "API响应中未找到有效的音频数据。"
             logging.error(error_msg)
             return {
@@ -397,7 +475,6 @@ def synthesize_speech(text: str, output_file_path: str = None) -> dict:
             }
 
     except Exception as e:
-        # 捕获API调用异常或文件写入异常
         error_msg = f"语音合成失败: {str(e)}"
         logging.error(error_msg)
         return {
@@ -405,43 +482,5 @@ def synthesize_speech(text: str, output_file_path: str = None) -> dict:
             "details": str(e)
         }
 
-# --- 4. 测试函数 (已注释，供pybind11调用时使用) ---  
-# def main():
-#     """测试函数，验证三个核心功能"""
-#     print("=== AI Service 功能测试 ===\n")
-    
-#     # 测试1: ASR - 音频转录
-#     print("1. 测试音频转录 (ASR):")
-#     print("-" * 40)
-#     asr_result = transcribe_audio()
-#     print(f"ASR 结果: {json.dumps(asr_result, ensure_ascii=False, indent=2)}")
-#     print()
-    
-#     # 测试2: LLM - 用户请求处理
-#     print("2. 测试用户请求处理 (LLM):")
-#     print("-" * 40)
-#     user_request = "现在几点了，桌面路径是什么"
-#     tools_file = "Resources/prompts/toolDefsPrompt.json"
-#     llm_result = process_user_request(user_request, tools_file)
-#     print(f"LLM 结果: {json.dumps(llm_result, ensure_ascii=False, indent=2)}")
-#     print()
-    
-#     # 测试3: TTS - 语音合成
-#     print("3. 测试语音合成 (TTS):")
-#     print("-" * 40)
-#     text = "现在你真是大帅哥"
-#     tts_result = synthesize_speech(text)
-#     print(f"TTS 结果: {json.dumps(tts_result, ensure_ascii=False, indent=2)}")
-#     print()
-    
-#     print("=== 测试完成 ===")
-    
-#     # 总结测试结果
-#     print("\n测试总结:")
-#     print(f"- ASR: {'✓ 成功' if 'status' in asr_result and asr_result['status'] == 'success' else '✗ 失败'}")
-#     print(f"- LLM: {'✓ 成功' if 'status' in llm_result else '✗ 失败'}")
-#     print(f"- TTS: {'✓ 成功' if 'status' in tts_result and tts_result['status'] == 'success' else '✗ 失败'}")
-
-
-# if __name__ == "__main__":
-#     main()
+# --- 5. 全局变量 ---
+_current_chat_session = None

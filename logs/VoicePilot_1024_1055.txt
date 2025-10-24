@@ -1,0 +1,301 @@
+[AIServiceWrapper] AI Service module imported successfully.
+[AgentCore] AI Service initialized successfully.
+[AgentCore] Registering all tools...
+[ToolRegistry] Registered tool: get_current_time
+[ToolRegistry] Registered tool: write_to_file
+[ToolRegistry] Registered tool: get_known_folder_path
+[AgentCore] Tool definitions saved to Resources/prompts/toolDefsPrompt.json
+[AgentCore] Starting audio processing...
+[AgentCore] Step 1: Transcribing audio...
+[AIServiceWrapper] === ASR CALL DEBUG ===
+[AIServiceWrapper] Audio file path: Resources/audios/input.wav
+[AIServiceWrapper] ASR args: {
+  "audio_file_path": "Resources/audios/input.wav"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: transcribe_audio
+[AIServiceWrapper] Arguments: {
+  "audio_file_path": "Resources/audios/input.wav"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到音频转录请求: 文件路径=Resources/audios/input.wav
+INFO:root:正在调用 Gemini ASR API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:转录成功: 获取当前时间,写入桌面文件。
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "status": "success",
+  "transcript": "获取当前时间,写入桌面文件。"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Transcription successful: "获取当前时间,写入桌面文件。"
+[AgentCore] Step 2: Processing user request with Chat...
+[AgentCore] === CHAT PROCESSING DEBUG ===
+[AgentCore] User request: "获取当前时间,写入桌面文件。"
+[AgentCore] =================================
+[AIServiceWrapper] === CREATE CHAT SESSION DEBUG ===
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Create session args: {
+  "tools_file": "Resources/prompts/toolDefsPrompt.json"
+}
+INFO:root:加载了 3 个工具定义
+INFO:root:Chat会话已初始化
+INFO:root:Chat会话创建成功
+[AIServiceWrapper] Chat session created successfully.
+[AIServiceWrapper] ======================================
+[AgentCore] Chat session created successfully.
+[AIServiceWrapper] === PROCESS USER MESSAGE DEBUG ===
+[AIServiceWrapper] User message: "获取当前时间,写入桌面文件。"
+[AIServiceWrapper] Process message args: {
+  "user_message": "获取当前时间,写入桌面文件。"
+}
+[AIServiceWrapper] ===============================================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_message
+[AIServiceWrapper] Arguments: {
+  "user_message": "获取当前时间,写入桌面文件。"
+}
+[AIServiceWrapper] ========================================
+INFO:root:向Chat发送消息: 获取当前时间,写入桌面文件。...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_current_time
+INFO:root:Chat响应: status=continue, function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {},
+      "name": "get_current_time"
+    }
+  ],
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] === CHAT ITERATION 1 DEBUG ===
+[AgentCore] Chat status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {},
+    "name": "get_current_time"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_current_time
+[ToolRegistry] Executing tool 'get_current_time' with args: {}
+[AgentCore] Tool 'get_current_time' result: Success: Current time is 2025-10-24 10:47:45
+[AgentCore] Tool execution results: [
+  {
+    "name": "get_current_time",
+    "result": "Success: Current time is 2025-10-24 10:47:45"
+  }
+]
+[AIServiceWrapper] === SEND TOOL RESULTS DEBUG ===
+[AIServiceWrapper] Tool results: [
+  {
+    "name": "get_current_time",
+    "result": "Success: Current time is 2025-10-24 10:47:45"
+  }
+]
+[AIServiceWrapper] Send tool results args: {
+  "tool_results_json": "[{\"name\":\"get_current_time\",\"result\":\"Success: Current time is 2025-10-24 10:47:45\"}]"
+}
+[AIServiceWrapper] ==============================================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: send_tool_results
+[AIServiceWrapper] Arguments: {
+  "tool_results_json": "[{\"name\":\"get_current_time\",\"result\":\"Success: Current time is 2025-10-24 10:47:45\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:添加工具执行结果: get_current_time
+INFO:root:向Chat发送工具执行结果...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到后续工具调用: get_known_folder_path
+INFO:root:工具结果处理完成: status=continue
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {
+        "folder_name": "desktop"
+      },
+      "name": "get_known_folder_path"
+    }
+  ],
+  "reasoning": "需要执行更多工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Tool results sent successfully, continuing chat...
+[AgentCore] =================================
+[AgentCore] === CHAT ITERATION 2 DEBUG ===
+[AgentCore] Chat status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {
+      "folder_name": "desktop"
+    },
+    "name": "get_known_folder_path"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_known_folder_path
+[ToolRegistry] Executing tool 'get_known_folder_path' with args: {"folder_name":"desktop"}
+[AgentCore] Tool 'get_known_folder_path' result: Success: C:\Users\ASUS\Desktop
+[AgentCore] Tool execution results: [
+  {
+    "name": "get_known_folder_path",
+    "result": "Success: C:\\Users\\ASUS\\Desktop"
+  }
+]
+[AIServiceWrapper] === SEND TOOL RESULTS DEBUG ===
+[AIServiceWrapper] Tool results: [
+  {
+    "name": "get_known_folder_path",
+    "result": "Success: C:\\Users\\ASUS\\Desktop"
+  }
+]
+[AIServiceWrapper] Send tool results args: {
+  "tool_results_json": "[{\"name\":\"get_known_folder_path\",\"result\":\"Success: C:\\\\Users\\\\ASUS\\\\Desktop\"}]"
+}
+[AIServiceWrapper] ==============================================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: send_tool_results
+[AIServiceWrapper] Arguments: {
+  "tool_results_json": "[{\"name\":\"get_known_folder_path\",\"result\":\"Success: C:\\\\Users\\\\ASUS\\\\Desktop\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:添加工具执行结果: get_known_folder_path
+INFO:root:向Chat发送工具执行结果...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到后续工具调用: write_to_file
+INFO:root:工具结果处理完成: status=continue
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {
+        "content": "2025-10-24 10:47:45",
+        "path": "C:\\Users\\ASUS\\Desktop\\current_time.txt"
+      },
+      "name": "write_to_file"
+    }
+  ],
+  "reasoning": "需要执行更多工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Tool results sent successfully, continuing chat...
+[AgentCore] =================================
+[AgentCore] === CHAT ITERATION 3 DEBUG ===
+[AgentCore] Chat status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {
+      "content": "2025-10-24 10:47:45",
+      "path": "C:\\Users\\ASUS\\Desktop\\current_time.txt"
+    },
+    "name": "write_to_file"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: write_to_file
+[ToolRegistry] Executing tool 'write_to_file' with args: {"content":"2025-10-24 10:47:45","path":"C:\\Users\\ASUS\\Desktop\\current_time.txt"}
+[AgentCore] Tool 'write_to_file' result: Success: Content successfully written to C:\Users\ASUS\Desktop\current_time.txt
+[AgentCore] Tool execution results: [
+  {
+    "name": "write_to_file",
+    "result": "Success: Content successfully written to C:\\Users\\ASUS\\Desktop\\current_time.txt"
+  }
+]
+[AIServiceWrapper] === SEND TOOL RESULTS DEBUG ===
+[AIServiceWrapper] Tool results: [
+  {
+    "name": "write_to_file",
+    "result": "Success: Content successfully written to C:\\Users\\ASUS\\Desktop\\current_time.txt"
+  }
+]
+[AIServiceWrapper] Send tool results args: {
+  "tool_results_json": "[{\"name\":\"write_to_file\",\"result\":\"Success: Content successfully written to C:\\\\Users\\\\ASUS\\\\Desktop\\\\current_time.txt\"}]"
+}
+[AIServiceWrapper] ==============================================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: send_tool_results
+[AIServiceWrapper] Arguments: {
+  "tool_results_json": "[{\"name\":\"write_to_file\",\"result\":\"Success: Content successfully written to C:\\\\Users\\\\ASUS\\\\Desktop\\\\current_time.txt\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:添加工具执行结果: write_to_file
+INFO:root:向Chat发送工具执行结果...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:工具结果处理完成: status=finished
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [],
+  "reasoning": "所有工具执行完成，返回最终结果",
+  "response_text": "当前时间已成功写入桌面文件 \"current_time.txt\"。",
+  "status": "finished"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Tool results sent successfully, continuing chat...
+[AgentCore] =================================
+[AgentCore] === CHAT ITERATION 4 DEBUG ===
+[AgentCore] Chat status: finished
+[AgentCore] Final response: "当前时间已成功写入桌面文件 "current_time.txt"。"
+[AgentCore] =================================
+[AgentCore] Step 3: Generating and playing speech response...
+[AgentCore] Generating speech for: "当前时间已成功写入桌面文件 "current_time.txt"。"
+[AgentCore] Switched to Speaking state.
+[AgentCore] Step 1: Synthesizing speech...
+[AIServiceWrapper] === TTS CALL DEBUG ===
+[AIServiceWrapper] Text to synthesize: "当前时间已成功写入桌面文件 "current_time.txt"。"
+[AIServiceWrapper] Output file path: Resources/audios/output.wav
+[AIServiceWrapper] TTS args: {
+  "output_file_path": "Resources/audios/output.wav",
+  "text": "当前时间已成功写入桌面文件 \"current_time.txt\"。"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: synthesize_speech
+[AIServiceWrapper] Arguments: {
+  "output_file_path": "Resources/audios/output.wav",
+  "text": "当前时间已成功写入桌面文件 \"current_time.txt\"。"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到TTS任务: 文本="当前时间已成功写入桌面文件 "current_time.txt"。", 输出到="Resources/audios/output.wav"
+INFO:root:正在向 Gemini TTS API 发送请求...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent "HTTP/1.1 200 OK"
+INFO:root:TTS成功，文件保存到: Resources/audios/output.wav
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "message": "语音文件已成功保存到: Resources/audios/output.wav",
+  "status": "success"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Speech synthesis completed successfully.
+[AgentCore] Step 2: Playing audio response...
+[AgentCore] Audio playback completed.
+[AgentCore] Speech response completed, returned to Idle state.
+[AIServiceWrapper] === DESTROY CHAT SESSION DEBUG ===
+INFO:root:Chat会话已销毁
+[AIServiceWrapper] Chat session destroyed successfully.
+[AIServiceWrapper] ========================================
+[AgentCore] Chat session destroyed after conversation.
+[AgentCore] Audio processing pipeline completed successfully.
+Python Manager shutdown successfully.

@@ -1,44 +1,47 @@
 #pragma once
 #include <Razel.h>
 #include "../Audio/AudioManager.h"
-#include "../Python/AIServiceWapper.h"
+#include "../Python/AIServiceWrapper.h"
 
 namespace Razel
 {
-	enum class AgentState
-	{
-		Idle, Listening, Processing, Speaking
-	};
-	class AgentCore
-	{
-	public:
-		AgentCore();
-		~AgentCore();
+    enum class AgentState
+    {
+        Idle, Listening, Processing, Speaking
+    };
 
-		void ToggleRecordingAndProcess();
-		AgentState GetCurrentState() const { return m_CurrentState; }
-		void OnUpdate();
-		void ProcessAudio(const std::string& audioFilePath);//TMP:PUBILC
-		bool CanStartNewConversation() const { return m_CurrentState == AgentState::Idle; }
-	private:
-		void RegisterAllTools();
-		void GenerateAndSpeakResponse(const std::string& toolResult);
-		void SaveToolDefinitionsToFile();
+    class AgentCore
+    {
+    public:
+        AgentCore();
+        ~AgentCore();
 
-		bool ProcessUserRequestWithTools(const std::string& userRequest, std::string& finalResponse);
-		bool ExecuteToolCalls(const nlohmann::json& functionCalls, std::string& toolResults);
-		std::string ExecuteSingleTool(const std::string& toolName, const nlohmann::json& parameters);
+        void ToggleRecordingAndProcess();
+        AgentState GetCurrentState() const { return m_CurrentState; }
+        void OnUpdate();
+        void ProcessAudio(const std::string& audioFilePath);//TMP:PUBLIC
+        bool CanStartNewConversation() const { return m_CurrentState == AgentState::Idle; }
 
-	private:
-		AgentState m_CurrentState;
-		Scope<AudioManager> m_AudioManager;
-		Scope<AIServiceWrapper> m_AIServiceWrapper;
+    private:
+        void RegisterAllTools();
+        void GenerateAndSpeakResponse(const std::string& toolResult);
+        void SaveToolDefinitionsToFile();
 
-		const std::string m_InputAudioPath = "Resources/audios/input.wav";
-		const std::string m_OutputAudioPath = "Resources/audios/output.wav";
-		const std::string m_ToolDefsFilePath = "Resources/prompts/toolDefsPrompt.json";
-	
-		// ∂‘ª∞¿˙ ∑π‹¿Ì
-		std::string m_ConversationHistory;
-	};
+        // === ÈáçÊûÑÂêéÁöÑChatÂ§ÑÁêÜÊñπÊ≥ï ===
+        bool ProcessUserRequestWithChat(const std::string& userRequest, std::string& finalResponse);
+        bool ExecuteToolCalls(const nlohmann::json& functionCalls, nlohmann::json& toolResults);
+        std::string ExecuteSingleTool(const std::string& toolName, const nlohmann::json& parameters);
+
+    private:
+        AgentState m_CurrentState;
+        Scope<AudioManager> m_AudioManager;
+        Scope<AIServiceWrapper> m_AIServiceWrapper;
+
+        const std::string m_InputAudioPath = "Resources/audios/input.wav";
+        const std::string m_OutputAudioPath = "Resources/audios/output.wav";
+        const std::string m_ToolDefsFilePath = "Resources/prompts/toolDefsPrompt.json";
+
+        // Chat‰ºöËØùÁä∂ÊÄÅ
+        bool m_ChatSessionActive = false;
+    };
 }
