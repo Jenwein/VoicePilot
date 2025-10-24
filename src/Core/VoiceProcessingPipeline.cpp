@@ -2,6 +2,7 @@
 #include "../Tools/ToolRegistry.h"
 #include "../Tools/SystemTools.h"
 #include <iostream>
+#include <thread>
 
 namespace Razel
 {
@@ -9,6 +10,7 @@ namespace Razel
         : m_AudioManager(audioManager)
         , m_AIServiceWrapper(aiService)
         , m_Cancelled(false)
+        , m_Processing(false)
         , m_ChatSessionActive(false)
     {
         RegisterAllTools();
@@ -16,8 +18,11 @@ namespace Razel
 
     VoiceProcessingPipeline::~VoiceProcessingPipeline()
     {
+        // 取消处理并等待完成
+        Cancel();
+        
         // 确保清理Chat会话
-        if (m_ChatSessionActive && m_AIServiceWrapper)
+        if (m_ChatSessionActive.load() && m_AIServiceWrapper)
         {
             m_AIServiceWrapper->DestroyChatSession();
         }
@@ -25,9 +30,70 @@ namespace Razel
 
     PipelineResult VoiceProcessingPipeline::ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
     {
+        // 同步版本，直接调用内部方法
+        return ProcessAudioFileInternal(inputPath, outputPath, toolDefsPath);
+    }
+
+    std::future<PipelineResult> VoiceProcessingPipeline::ProcessAudioFileAsync(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
+    {
+        // 检查是否已在处理中
+        if (m_Processing.load())
+        {
+            std::promise<PipelineResult> promise;
+            promise.set_value(PipelineResult::Error("Pipeline is already processing another request"));
+            return promise.get_future();
+        }
+
+        // 使用std::async启动异步任务
+        return std::async(std::launch::async, [this, inputPath, outputPath, toolDefsPath]() {
+            return ProcessAudioFileInternal(inputPath, outputPath, toolDefsPath);
+        });
+    }
+
+    void VoiceProcessingPipeline::SetStageCallback(std::function<void(PipelineStage, const std::string&)> callback)
+    {
+        std::lock_guard<std::mutex> lock(m_CallbackMutex);
+        m_StageCallback = callback;
+    }
+
+    void VoiceProcessingPipeline::Cancel()
+    {
+        std::cout << "[Pipeline] Cancelling pipeline processing..." << std::endl;
+        m_Cancelled.store(true);
+
+        // 清理Chat会话（线程安全）
+        if (m_ChatSessionActive.load() && m_AIServiceWrapper)
+        {
+            m_AIServiceWrapper->DestroyChatSession();
+            m_ChatSessionActive.store(false);
+        }
+    }
+
+    PipelineResult VoiceProcessingPipeline::ProcessAudioFileInternal(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
+    {
         std::cout << "[Pipeline] Starting voice processing pipeline..." << std::endl;
         
-        m_Cancelled = false;
+        // 设置处理状态
+        m_Processing.store(true);
+        m_Cancelled.store(false);
+
+        // RAII确保处理完成后重置状态
+        struct ProcessingGuard {
+            std::atomic<bool>& processing;
+            ProcessingGuard(std::atomic<bool>& p) : processing(p) {}
+            ~ProcessingGuard() { processing.store(false); }
+        } guard(m_Processing);
+
+		if (!m_AIServiceWrapper->Initialize())
+		{
+			std::cerr << "[AgentCore] Failed to initialize AI Service: "
+				<< m_AIServiceWrapper->GetLastError() << std::endl;
+		}
+		else
+		{
+			std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
+		}
+
 
         try
         {
@@ -35,28 +101,28 @@ namespace Razel
             auto asrResult = PerformASR(inputPath);
             if (!asrResult.success || CheckCancellation())
             {
-                return asrResult;
+                return asrResult.success ? PipelineResult::Error("Processing cancelled") : asrResult;
             }
 
             // 步骤2: LLM处理
             auto llmResult = ProcessWithLLM(asrResult.responseText, toolDefsPath);
             if (!llmResult.success || CheckCancellation())
             {
-                return llmResult;
+                return llmResult.success ? PipelineResult::Error("Processing cancelled") : llmResult;
             }
 
             // 步骤3: TTS生成
             auto ttsResult = GenerateTTS(llmResult.responseText, outputPath);
             if (!ttsResult.success || CheckCancellation())
             {
-                return ttsResult;
+                return ttsResult.success ? PipelineResult::Error("Processing cancelled") : ttsResult;
             }
 
             // 步骤4: 音频播放
             auto playResult = PlayAudio(outputPath);
             if (!playResult.success || CheckCancellation())
             {
-                return playResult;
+                return playResult.success ? PipelineResult::Error("Processing cancelled") : playResult;
             }
 
             std::cout << "[Pipeline] Voice processing pipeline completed successfully." << std::endl;
@@ -67,23 +133,6 @@ namespace Razel
             std::string errorMsg = "Pipeline processing failed: " + std::string(e.what());
             std::cerr << "[Pipeline] " << errorMsg << std::endl;
             return PipelineResult::Error(errorMsg);
-        }
-    }
-
-    void VoiceProcessingPipeline::SetStageCallback(std::function<void(PipelineStage, const std::string&)> callback)
-    {
-        m_StageCallback = callback;
-    }
-
-    void VoiceProcessingPipeline::Cancel()
-    {
-        std::cout << "[Pipeline] Cancelling pipeline processing..." << std::endl;
-        m_Cancelled = true;
-
-        if (m_ChatSessionActive && m_AIServiceWrapper)
-        {
-            m_AIServiceWrapper->DestroyChatSession();
-            m_ChatSessionActive = false;
         }
     }
 
@@ -186,7 +235,7 @@ namespace Razel
             std::cerr << "[Pipeline] Failed to create Chat session: " << m_AIServiceWrapper->GetLastError() << std::endl;
             return false;
         }
-        m_ChatSessionActive = true;
+        m_ChatSessionActive.store(true);
 
         // 2. 发送用户消息
         AIResult chatResult = m_AIServiceWrapper->ProcessUserMessage(userRequest);
@@ -215,10 +264,10 @@ namespace Razel
                     finalResponse = chatResult.data["response_text"].get<std::string>();
                     std::cout << "[Pipeline] Final response: \"" << finalResponse << "\"" << std::endl;
                     
-                    if (m_ChatSessionActive)
+                    if (m_ChatSessionActive.load())
                     {
                         m_AIServiceWrapper->DestroyChatSession();
-                        m_ChatSessionActive = false;
+                        m_ChatSessionActive.store(false);
                     }
                     
                     return true;
@@ -342,6 +391,8 @@ namespace Razel
     {
         std::cout << "[Pipeline] " << message << std::endl;
         
+        // 线程安全的回调调用
+        std::lock_guard<std::mutex> lock(m_CallbackMutex);
         if (m_StageCallback)
         {
             m_StageCallback(stage, message);
@@ -350,6 +401,6 @@ namespace Razel
 
     bool VoiceProcessingPipeline::CheckCancellation()
     {
-        return m_Cancelled;
+        return m_Cancelled.load();
     }
 }

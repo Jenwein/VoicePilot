@@ -1,6 +1,9 @@
 #pragma once
 #include <Razel.h>
 #include <functional>
+#include <atomic>
+#include <mutex>
+#include <future>
 #include <nlohmann/json.hpp>
 #include "../Audio/AudioManager.h"
 #include "../Python/AIServiceWrapper.h"
@@ -43,16 +46,26 @@ namespace Razel
         VoiceProcessingPipeline(AudioManager* audioManager, AIServiceWrapper* aiService);
         ~VoiceProcessingPipeline();
 
+        // 同步接口（保留用于向后兼容）
         PipelineResult ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
+
+        // 异步接口
+        std::future<PipelineResult> ProcessAudioFileAsync(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
 
         // 设置流程阶段回调（用于UI进度显示）
         void SetStageCallback(std::function<void(PipelineStage, const std::string&)> callback);
 
-        // 取消当前处理（用于中断支持）
+        // 取消当前处理（线程安全）
         void Cancel();
-        bool IsCancelled() const { return m_Cancelled; }
+        bool IsCancelled() const { return m_Cancelled.load(); }
+
+        // 检查是否正在处理
+        bool IsProcessing() const { return m_Processing.load(); }
 
     private:
+        // 内部处理方法（现在线程安全）
+        PipelineResult ProcessAudioFileInternal(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
+
         // 流程步骤
         PipelineResult PerformASR(const std::string& audioFilePath);
         PipelineResult ProcessWithLLM(const std::string& userRequest, const std::string& toolDefsPath);
@@ -67,7 +80,7 @@ namespace Razel
         // 工具管理
         void RegisterAllTools();
 
-        // 状态管理
+        // 状态管理（线程安全）
         void NotifyStage(PipelineStage stage, const std::string& message);
         bool CheckCancellation();  // 检查是否需要取消
 
@@ -76,9 +89,13 @@ namespace Razel
         AudioManager* m_AudioManager;
         AIServiceWrapper* m_AIServiceWrapper;
 
-        // 回调和状态
+        // 线程安全的状态管理
+        std::atomic<bool> m_Cancelled;
+        std::atomic<bool> m_Processing;
+        std::atomic<bool> m_ChatSessionActive;
+
+        // 回调保护
+        mutable std::mutex m_CallbackMutex;
         std::function<void(PipelineStage, const std::string&)> m_StageCallback;
-        bool m_Cancelled;
-        bool m_ChatSessionActive;
     };
 }

@@ -47,17 +47,17 @@ namespace Razel {
 		//m_AgentCore->Init();
 
 		// TODO:创建语音助手的3D模型实体
-		//m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
-		// ModelComponent modelComp;
-		// modelComp.FilePath = "assets/models/bunny/bunny.obj";
-		// modelComp.FlipUVs = false;
-		// modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
-		// auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
-		// 
-		// auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
-		// //transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
-		// transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
-		// transformComponent.Scale = { 3.0f, 3.0f, 3.0f };
+		m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
+		ModelComponent modelComp;
+		modelComp.FilePath = "assets/models/bunny/bunny.obj";
+		modelComp.FlipUVs = false;
+		modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
+		auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
+		
+		auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
+		//transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
+		transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
+		transformComponent.Scale = { 3.0f, 3.0f, 3.0f };
 	}
 
 	void EditorLayer::OnDetach()
@@ -72,7 +72,7 @@ namespace Razel {
 		m_AgentCore->OnUpdate();
 
 		//TODO:启用语音助手3D模型的更新,当前的py调用是同步阻塞的,所以更新无法进行,之后考虑异步的进行py的调用与结果获取
-		//UpdateVoiceAssistantModel(ts);
+		UpdateVoiceAssistantModel(ts);
 
 		// 当帧缓冲大小与视口大小不同时,且视口大小不为0
 		// 因为当前的流程中,先OnUpdate,渲染,填充帧缓冲,解绑,然后在OnImGuiRenderer中去调整视口大小,此时会导致纹理为空,所以有一个黑色的闪烁
@@ -258,19 +258,17 @@ namespace Razel {
 		if (ImGui::Button("test_ExecPython"))
 		{
 			//m_AgentCore->ProcessAudio("Resources/audios/input.wav");
-			m_AgentCore->ProcessVoiceRequest();
+			m_AgentCore->ProcessVoiceRequestAsync();
 		}
 		
 		//TODO:
 		ImGui::End();
 
-		// 后期来的及可以添加悬浮球的UI，当主界面最小化后显示悬浮球
+		// TODO: 添加悬浮球的UI，当主界面最小化后显示悬浮球
 		//ImGui::Begin("悬浮球");
 		////TODO:作为一个悬浮球
 		//ImGui::End();
 
-
-		// TODO:ViewPort显示一个3D模型作为语言助手的形象，后期如果来的及可以通过控制模型的变化来表现当前AI助手的状态
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
