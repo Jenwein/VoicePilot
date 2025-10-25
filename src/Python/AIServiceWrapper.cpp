@@ -10,11 +10,14 @@ namespace Razel
     }
 
     AIServiceWrapper::~AIServiceWrapper()
-    {
+	{
+        PythonCILAcquire pythonScope;
         if (m_ChatSessionActive)
         {
             DestroyChatSession();
         }
+
+        m_AIServiceModule = py::module();
     }
 
     bool AIServiceWrapper::Initialize()
