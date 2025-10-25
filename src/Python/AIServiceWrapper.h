@@ -4,8 +4,7 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include "PythonManager.h"
 
 namespace Razel
 {
@@ -52,7 +51,6 @@ namespace Razel
         // 销毁Chat会话
         bool DestroyChatSession();
 
-        // === TTS功能 (保持不变) ===
         AIResult SynthesizeSpeech(const std::string& text,
             const std::string& outputFilePath = "");
 
@@ -71,15 +69,17 @@ namespace Razel
             const nlohmann::json& args = {});
 
         // 将Python结果转换为AIResult
-        AIResult ConvertPythonResult(const pybind11::object& pyResult);
+        //AIResult ConvertPythonResult(const pybind11::object& pyResult);
 
         // 设置错误
         void SetLastError(const std::string& error);
 
     private:
+        //std::unique_ptr<PythonCILRelease> m_GILRelease;
+        
         bool m_Initialized = false;
         bool m_ChatSessionActive = false;
         std::string m_LastError;
-        pybind11::module m_AIServiceModule;
+        
     };
 }

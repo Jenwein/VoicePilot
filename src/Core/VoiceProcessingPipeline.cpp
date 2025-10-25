@@ -6,14 +6,25 @@
 
 namespace Razel
 {
-    VoiceProcessingPipeline::VoiceProcessingPipeline(AudioManager* audioManager, AIServiceWrapper* aiService)
-        : m_AudioManager(audioManager)
-        , m_AIServiceWrapper(aiService)
-        , m_Cancelled(false)
+    VoiceProcessingPipeline::VoiceProcessingPipeline()
+        : m_Cancelled(false)
         , m_Processing(false)
         , m_ChatSessionActive(false)
     {
         RegisterAllTools();
+		m_AIServiceWrapper = CreateScope<AIServiceWrapper>();
+
+		if (!m_AIServiceWrapper->Initialize())
+		{
+			std::cerr << "[AgentCore] Failed to initialize AI Service: "
+				      << m_AIServiceWrapper->GetLastError() << std::endl;
+		}
+		else
+		{
+			std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
+		}
+
+        m_GILRelease = std::make_unique<PythonCILRelease>();
     }
 
     VoiceProcessingPipeline::~VoiceProcessingPipeline()
@@ -28,11 +39,11 @@ namespace Razel
         }
     }
 
-    PipelineResult VoiceProcessingPipeline::ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
-    {
-        // 同步版本，直接调用内部方法
-        return ProcessAudioFileInternal(inputPath, outputPath, toolDefsPath);
-    }
+    //PipelineResult VoiceProcessingPipeline::ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
+    //{
+    //    // 同步版本，直接调用内部方法
+    //    return ProcessAudioFileInternal(inputPath, outputPath, toolDefsPath);
+    //}
 
     std::future<PipelineResult> VoiceProcessingPipeline::ProcessAudioFileAsync(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
     {
@@ -58,7 +69,7 @@ namespace Razel
 
     void VoiceProcessingPipeline::Cancel()
     {
-        std::cout << "[Pipeline] Cancelling pipeline processing..." << std::endl;
+        std::cout << "[Pipeline] canceling pipeline processing..." << std::endl;
         m_Cancelled.store(true);
 
         // 清理Chat会话（线程安全）
@@ -186,22 +197,6 @@ namespace Razel
         NotifyStage(PipelineStage::TTS, "Text-to-speech synthesis completed");
         return PipelineResult::Success(responseText);
     }
-
-    //PipelineResult VoiceProcessingPipeline::PlayAudio(const std::string& audioPath)
-    //{
-    //    NotifyStage(PipelineStage::AudioPlayback, "Starting audio playback...");
-
-    //    try
-    //    {
-    //        m_AudioManager->PlayAudioFile(audioPath);
-    //        NotifyStage(PipelineStage::AudioPlayback, "Audio playback completed");
-    //        return PipelineResult::Success("");
-    //    }
-    //    catch (const std::exception& e)
-    //    {
-    //        return PipelineResult::Error("Audio playback failed: " + std::string(e.what()));
-    //    }
-    //}
 
     bool VoiceProcessingPipeline::ProcessUserRequestWithChat(const std::string& userRequest, const std::string& toolDefsPath, std::string& finalResponse)
     {

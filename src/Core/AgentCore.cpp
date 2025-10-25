@@ -22,20 +22,9 @@ namespace Razel
         std::wcout.imbue(std::locale(""));
 
         m_AudioManager = CreateScope<AudioManager>();
-        m_AIServiceWrapper = CreateScope<AIServiceWrapper>();
-
-        if (!m_AIServiceWrapper->Initialize())
-        {
-            std::cerr << "[AgentCore] Failed to initialize AI Service: "
-                << m_AIServiceWrapper->GetLastError() << std::endl;
-        }
-        else
-        {
-            std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
-        }
 
         // 创建Pipeline
-        m_Pipeline = CreateScope<VoiceProcessingPipeline>(m_AudioManager.get(), m_AIServiceWrapper.get());
+        m_Pipeline = CreateScope<VoiceProcessingPipeline>();
         
         // 设置Pipeline回调（线程安全包装）
         m_Pipeline->SetStageCallback([this](PipelineStage stage, const std::string& message) {
@@ -43,7 +32,6 @@ namespace Razel
         });
 
         SaveToolDefinitionsToFile();
-        
         std::cout << "[AgentCore] Initialized successfully." << std::endl;
     }
 

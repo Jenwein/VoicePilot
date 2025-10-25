@@ -1,6 +1,9 @@
 #include "PythonManager.h"
 #include <iostream>
 #include <filesystem>
+
+#include <pybind11/stl.h>
+
 namespace Razel
 {
 	Razel::PythonManager& PythonManager::GetInstance()
@@ -43,6 +46,60 @@ namespace Razel
 		}
 	}
 
+	nlohmann::json PythonManager::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
+	{
+		if (!m_Initialized)
+		{
+			throw std::runtime_error("Python Manager not initialized");
+		}
+		try
+		{
+			py::object pyFunction = m_Module.attr(functionName.c_str());
+			py::object pyResult;
+
+			if (args.is_null() || args.empty())
+			{
+				pyResult = pyFunction();
+			}
+			else
+			{
+				py::dict pyArgs;
+				for (auto& [key, value] : args.items())
+				{
+					if (value.is_string())
+					{
+						pyArgs[key.c_str()] = value.get<std::string>();
+					}
+					else if (value.is_number_integer())
+					{
+						pyArgs[key.c_str()] = value.get<int>();
+					}
+					else if (value.is_number_float())
+					{
+						pyArgs[key.c_str()] = value.get<double>();
+					}
+					else if (value.is_boolean())
+					{
+						pyArgs[key.c_str()] = value.get<bool>();
+					}
+					// 其他类型可以根据需要扩展
+				}
+				pyResult = pyFunction(**pyArgs);
+			}
+
+			// 将Python结果转换为JSON字符串
+			py::module json_module = py::module::import("json");
+			py::object jsonObj = json_module.attr("dumps")(pyResult, py::arg("ensure_ascii") = false);
+			std::string jsonString = jsonObj.cast<std::string>();
+			return nlohmann::json::parse(jsonString);
+		}
+		catch (const py::error_already_set& e)
+		{
+			m_LastError = "Failed to call function '" + functionName + "': " + e.what();
+			throw std::runtime_error(m_LastError);
+		}
+	}
+
 	void PythonManager::Shutdown()
 	{
 		if (m_Initialized)
@@ -60,7 +117,7 @@ namespace Razel
 		}
 	}
 
-	py::module PythonManager::ImportModule(const std::string& moduleName)
+	void PythonManager::ImportModule(const std::string& moduleName)
 	{
 		if (!m_Initialized)
 		{
@@ -69,7 +126,7 @@ namespace Razel
 
 		try
 		{
-			return py::module::import(moduleName.c_str());
+			m_Module =  py::module::import(moduleName.c_str());
 		}
 		catch (const py::error_already_set& e)
 		{

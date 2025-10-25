@@ -2,9 +2,11 @@
 
 #include <memory>
 #include <string>
+#include <iostream>
+
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
-#include <iostream>
+#include <nlohmann/json.hpp>
 namespace py = pybind11;
 namespace Razel
 {
@@ -54,48 +56,57 @@ namespace Razel
 	class PythonManager
 	{
 	public:
-		// 获取单例实例
 		static PythonManager& GetInstance();
 
-		// 初始化 Python 环境
 		bool Initialize();
+		void ImportModule(const std::string& moduleName);
+		void AddPythonPath(const std::string& path);
+		bool ExecuteCode(const std::string& code);
+	
+		template<typename R,typename...Args>
+		R CallPythonFunction(std::string functionName, Args... args)
+		{
+			if (!m_Initialized)
+			{
+				throw std::runtime_error("Python Manager not initialized");
+			}
+			try
+			{
+				py::object pyFunction = m_Module.attr(functionName.c_str());
+				py::object result = pyFunction(args...);
+				return result.cast<R>();
+			}
+			catch (const py::error_already_set& e)
+			{
+				m_LastError = "Failed to call function '" + functionName + "': " + e.what();
+				throw std::runtime_error(m_LastError);
+			}
+		}
 
-		// 清理 Python 环境
+		nlohmann::json CallPythonFunction(const std::string& functionName, const nlohmann::json& args);
+
 		void Shutdown();
 
-		// 检查是否已初始化
 		bool IsInitialized() const { return m_Initialized; }
 
-		// 导入模块
-		py::module ImportModule(const std::string& moduleName);
-
-		// 添加 Python 路径
-		void AddPythonPath(const std::string& path);
-
-		// 执行 Python 代码（用于调试）
-		bool ExecuteCode(const std::string& code);
-
-		// 获取 Python 版本信息
 		std::string GetPythonVersion() const;
-
-		// 错误处理 - 获取最后的 Python 异常信息
 		std::string GetLastError() const;
 
 	private:
 		PythonManager() = default;
 		~PythonManager();
 
-		// 禁止复制和移动
 		PythonManager(const PythonManager&) = delete;
 		PythonManager& operator=(const PythonManager&) = delete;
 		PythonManager(PythonManager&&) = delete;
 		PythonManager& operator=(PythonManager&&) = delete;
 
-		// 设置 Python 路径和环境
 		void SetupPythonEnvironment();
 
 	private:
 		bool m_Initialized = false;
+		py::module m_Module;
+
 		std::unique_ptr<py::scoped_interpreter> m_Interpreter;
 		std::string m_LastError;
 	};

@@ -44,7 +44,6 @@ namespace Razel {
 		m_EditorCamera = EditorCamera(30.0f, 1.778f, 0.1f, 1000.0f);
 
 		m_AgentCore = CreateScope<AgentCore>();
-		m_GilGuard = CreateScope<PythonCILRelease>();
 
 		m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
 		ModelComponent modelComp;
@@ -536,18 +535,18 @@ namespace Razel {
 		}
 		case AgentState::Speaking:
 		{
-			if (m_RotatingUp)
-			{
-				m_SpeakingRotation += m_SpeakingSpeed;
-				if (m_SpeakingRotation >= 45.0f)
-					m_RotatingUp = false;
-			}
-			else
-			{
-				m_SpeakingRotation -= m_SpeakingSpeed;
-				if (m_SpeakingRotation <= -45.0f)
-					m_RotatingUp = true;
-			}
+			//if (m_RotatingUp)
+			//{
+			//	m_SpeakingRotation += m_SpeakingSpeed;
+			//	if (m_SpeakingRotation >= 45.0f)
+			//		m_RotatingUp = false;
+			//}
+			//else
+			//{
+			//	m_SpeakingRotation -= m_SpeakingSpeed;
+			//	if (m_SpeakingRotation <= -45.0f)
+			//		m_RotatingUp = true;
+			//}
 		}
 		}
 	}

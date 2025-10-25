@@ -5,7 +5,6 @@
 #include <mutex>
 #include <future>
 #include <nlohmann/json.hpp>
-#include "../Audio/AudioManager.h"
 #include "../Python/AIServiceWrapper.h"
 
 namespace Razel
@@ -43,16 +42,16 @@ namespace Razel
     class VoiceProcessingPipeline
     {
     public:
-        VoiceProcessingPipeline(AudioManager* audioManager, AIServiceWrapper* aiService);
+        VoiceProcessingPipeline();
         ~VoiceProcessingPipeline();
 
         // 同步接口（保留用于向后兼容）
-        PipelineResult ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
+        //PipelineResult ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
 
         // 异步接口
         std::future<PipelineResult> ProcessAudioFileAsync(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
 
-        // 设置流程阶段回调（用于UI进度显示）
+        // 设置流程阶段回调
         void SetStageCallback(std::function<void(PipelineStage, const std::string&)> callback);
 
         // 取消当前处理（线程安全）
@@ -85,10 +84,9 @@ namespace Razel
         bool CheckCancellation();  // 检查是否需要取消
 
     private:
-        // 依赖的服务
-        AudioManager* m_AudioManager;
-        AIServiceWrapper* m_AIServiceWrapper;
+        Scope<AIServiceWrapper> m_AIServiceWrapper;
 
+        std::unique_ptr<PythonCILRelease> m_GILRelease;
         // 线程安全的状态管理
         std::atomic<bool> m_Cancelled;
         std::atomic<bool> m_Processing;
