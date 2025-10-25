@@ -1202,5 +1202,485 @@ namespace Razel {
 			}}
 		};
 	}
+	//===========Web Tools==========
 
+	std::string OpenURLTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("url")) {
+			return "Error: Missing required argument 'url'.";
+		}
+		std::string url = args["url"].get<std::string>();
+
+		// 使用 ShellExecuteA 在默认浏览器中打开URL
+		HINSTANCE result = ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+		if ((intptr_t)result > 32) {
+			return "Success: URL opened in default browser.";
+		}
+		else {
+			return "Error: Failed to open URL. It might be malformed or no default browser is set.";
+		}
+	}
+
+	nlohmann::json OpenURLTool::GetDefinition() const {
+		return {
+			{"name", "open_url"},
+			{"description", "Opens a given URL in the user's default web browser."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"url", {
+						{"type", "string"},
+						{"description", "The full URL to open, e.g., 'https://www.google.com'."}
+					}}
+				}},
+				{"required", {"url"}}
+			}}
+		};
+	}
+
+	std::string WebSearchTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("query")) {
+			return "Error: Missing required argument 'query'.";
+		}
+		std::string query = args["query"].get<std::string>();
+
+		// 对查询字符串进行简单的URL编码 (替换空格)
+		std::string encoded_query = "";
+		for (char c : query) {
+			if (c == ' ') {
+				encoded_query += '+';
+			}
+			else {
+				encoded_query += c;
+			}
+		}
+
+		// 构建Google搜索URL
+		std::string search_url = "https://www.google.com/search?q=" + encoded_query;
+
+		// 使用 ShellExecuteA 打开搜索结果页
+		HINSTANCE result = ShellExecuteA(NULL, "open", search_url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+		if ((intptr_t)result > 32) {
+			return "Success: Search results for '" + query + "' opened in browser.";
+		}
+		else {
+			return "Error: Failed to perform web search.";
+		}
+	}
+
+	nlohmann::json WebSearchTool::GetDefinition() const {
+		return {
+			{"name", "web_search"},
+			{"description", "Performs a web search using Google and opens the results in the default browser."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"query", {
+						{"type", "string"},
+						{"description", "The search term or question to look up."}
+					}}
+				}},
+				{"required", {"query"}}
+			}}
+		};
+	}
+
+	std::string FetchWebpageContentTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("url")) {
+			return "Error: Missing required argument 'url'.";
+		}
+		std::string url = args["url"].get<std::string>();
+
+		HINTERNET hInternet = InternetOpenA("RazelWebTool", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+		if (!hInternet) {
+			return "Error: Failed to initialize WinINet (InternetOpenA).";
+		}
+
+		HINTERNET hConnect = InternetOpenUrlA(hInternet, url.c_str(), NULL, 0, INTERNET_FLAG_RELOAD, 0);
+		if (!hConnect) {
+			InternetCloseHandle(hInternet);
+			return "Error: Failed to open URL. It might be invalid or the server is unreachable.";
+		}
+
+		std::string content = "";
+		char buffer[4096];
+		DWORD bytesRead = 0;
+
+		while (InternetReadFile(hConnect, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+			buffer[bytesRead] = '\0'; // Null-terminate the buffer
+			content += buffer;
+		}
+
+		InternetCloseHandle(hConnect);
+		InternetCloseHandle(hInternet);
+
+		if (content.empty()) {
+			return "Error: Failed to read any content from the URL. The page might be empty or protected.";
+		}
+
+		return "Success: Fetched webpage content.\n\n" + content;
+	}
+
+	nlohmann::json FetchWebpageContentTool::GetDefinition() const {
+		return {
+			{"name", "fetch_webpage_content"},
+			{"description", "Downloads and returns the raw HTML content of a given URL. Useful for analysis and summarization."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"url", {
+						{"type", "string"},
+						{"description", "The full URL of the webpage to fetch."}
+					}}
+				}},
+				{"required", {"url"}}
+			}}
+		};
+	}
+
+	//===========Window Management Tools==========
+
+// 辅助函数和数据结构，用于通过标题查找窗口
+	struct EnumData {
+		std::wstring title_substring;
+		HWND hwnd = NULL;
+	};
+
+	BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+		EnumData* data = reinterpret_cast<EnumData*>(lParam);
+		const int buffer_size = 256;
+		wchar_t window_title[buffer_size];
+
+		if (IsWindowVisible(hwnd) && GetWindowTextW(hwnd, window_title, buffer_size) > 0) {
+			std::wstring current_title(window_title);
+			// 不区分大小写的子字符串查找
+			std::transform(current_title.begin(), current_title.end(), current_title.begin(), ::towlower);
+			if (current_title.find(data->title_substring) != std::wstring::npos) {
+				data->hwnd = hwnd;
+				return FALSE; // 找到窗口，停止枚举
+			}
+		}
+		return TRUE; // 继续枚举
+	}
+
+	HWND FindWindowByTitleSubstring(const std::string& title_substring) {
+		EnumData data;
+		std::wstring w_title_substring(title_substring.begin(), title_substring.end());
+		std::transform(w_title_substring.begin(), w_title_substring.end(), w_title_substring.begin(), ::towlower);
+		data.title_substring = w_title_substring;
+
+		EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&data));
+		return data.hwnd;
+	}
+
+
+	std::string GetActiveWindowTool::Execute(const nlohmann::json& args) {
+		HWND hwnd = GetForegroundWindow();
+		if (hwnd == NULL) {
+			return "Success: No active window found.";
+		}
+
+		const int buffer_size = 256;
+		wchar_t window_title_w[buffer_size];
+		GetWindowTextW(hwnd, window_title_w, buffer_size);
+
+		std::wstring w_title(window_title_w);
+		if (w_title.empty()) {
+			return "Success: Active window has no title.";
+		}
+
+		// 将宽字符串转换为UTF-8编码的string
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &w_title[0], (int)w_title.size(), NULL, 0, NULL, NULL);
+		std::string title(size_needed, 0);
+		WideCharToMultiByte(CP_UTF8, 0, &w_title[0], (int)w_title.size(), &title[0], size_needed, NULL, NULL);
+
+		return "Success: Active window title is \"" + title + "\"";
+	}
+
+	nlohmann::json GetActiveWindowTool::GetDefinition() const {
+		return {
+			{"name", "get_active_window"},
+			{"description", "Gets the title of the currently active (foreground) window."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", nlohmann::json::object()},
+				{"required", nlohmann::json::array()}
+			}}
+		};
+	}
+
+
+	std::string SwitchWindowTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("window_title")) {
+			return "Error: Missing required argument 'window_title'.";
+		}
+		std::string title_substring = args["window_title"].get<std::string>();
+
+		HWND hwnd = FindWindowByTitleSubstring(title_substring);
+		if (hwnd == NULL) {
+			return "Error: Window with title containing '" + title_substring + "' not found.";
+		}
+
+		// 如果窗口最小化，先还原
+		if (IsIconic(hwnd)) {
+			ShowWindow(hwnd, SW_RESTORE);
+		}
+
+		// 切换到窗口
+		if (SetForegroundWindow(hwnd)) {
+			return "Success: Switched to window with title containing '" + title_substring + "'.";
+		}
+		else {
+			return "Error: Failed to switch to the specified window.";
+		}
+	}
+
+	nlohmann::json SwitchWindowTool::GetDefinition() const {
+		return {
+			{"name", "switch_window"},
+			{"description", "Brings a window to the foreground, making it active. It finds the window by a substring of its title."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"window_title", {
+						{"type", "string"},
+						{"description", "A part of the title of the window to switch to, e.g., 'Notepad', 'Visual Studio'."}
+					}}
+				}},
+				{"required", {"window_title"}}
+			}}
+		};
+	}
+
+
+	std::string SetWindowStateTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("window_title") || !args.contains("state")) {
+			return "Error: Missing required arguments 'window_title' or 'state'.";
+		}
+		std::string title_substring = args["window_title"].get<std::string>();
+		std::string state = args["state"].get<std::string>();
+		std::transform(state.begin(), state.end(), state.begin(), ::tolower); // state不区分大小写
+
+		HWND hwnd = FindWindowByTitleSubstring(title_substring);
+		if (hwnd == NULL) {
+			return "Error: Window with title containing '" + title_substring + "' not found.";
+		}
+
+		UINT cmd;
+		if (state == "minimize") {
+			cmd = SW_MINIMIZE;
+		}
+		else if (state == "maximize") {
+			cmd = SW_MAXIMIZE;
+		}
+		else if (state == "restore") {
+			cmd = SW_RESTORE;
+		}
+		else {
+			return "Error: Invalid state specified. Use 'minimize', 'maximize', or 'restore'.";
+		}
+
+		if (ShowWindow(hwnd, cmd)) {
+			return "Success: Window state changed to '" + state + "'.";
+		}
+		else {
+			return "Error: Failed to change the window state.";
+		}
+	}
+
+	nlohmann::json SetWindowStateTool::GetDefinition() const {
+		return {
+			{"name", "set_window_state"},
+			{"description", "Minimizes, maximizes, or restores a window identified by a substring of its title."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"window_title", {
+						{"type", "string"},
+						{"description", "A part of the title of the target window."}
+					}},
+					{"state", {
+						{"type", "string"},
+						{"description", "The desired state. Must be one of: 'minimize', 'maximize', 'restore'."}
+					}}
+				}},
+				{"required", {"window_title", "state"}}
+			}}
+		};
+	}
+	// 辅助函数，用于模拟一次虚拟按键的按下和抬起
+	void SendVirtualKey(WORD vk) {
+		INPUT input = { 0 };
+		input.type = INPUT_KEYBOARD;
+		input.ki.wVk = vk;
+
+		// 按下按键
+		SendInput(1, &input, sizeof(INPUT));
+
+		// 释放按键
+		input.ki.dwFlags = KEYEVENTF_KEYUP;
+		SendInput(1, &input, sizeof(INPUT));
+	}
+
+
+	std::string MediaControlTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("command")) {
+			return "Error: Missing required argument 'command'.";
+		}
+		std::string command = args["command"].get<std::string>();
+		std::transform(command.begin(), command.end(), command.begin(), ::tolower); // 命令不区分大小写
+
+		WORD vk_code = 0;
+
+		if (command == "play_pause") {
+			vk_code = VK_MEDIA_PLAY_PAUSE;
+		}
+		else if (command == "next") {
+			vk_code = VK_MEDIA_NEXT_TRACK;
+		}
+		else if (command == "previous") {
+			vk_code = VK_MEDIA_PREV_TRACK;
+		}
+		else if (command == "stop") {
+			vk_code = VK_MEDIA_STOP;
+		}
+		else if (command == "volume_up") {
+			vk_code = VK_VOLUME_UP;
+		}
+		else if (command == "volume_down") {
+			vk_code = VK_VOLUME_DOWN;
+		}
+		else if (command == "mute") {
+			vk_code = VK_VOLUME_MUTE;
+		}
+		else {
+			return "Error: Invalid command. Use 'play_pause', 'next', 'previous', 'stop', 'volume_up', 'volume_down', or 'mute'.";
+		}
+
+		SendVirtualKey(vk_code);
+
+		return "Success: Media command '" + command + "' executed.";
+	}
+
+	nlohmann::json MediaControlTool::GetDefinition() const {
+		return {
+			{"name", "media_control"},
+			{"description", "Controls system-wide media playback and volume by simulating media key presses."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"command", {
+						{"type", "string"},
+						{"description", "The media command to execute. Must be one of: 'play_pause', 'next', 'previous', 'stop', 'volume_up', 'volume_down', 'mute'."}
+					}}
+				}},
+				{"required", {"command"}}
+			}}
+		};
+	}
+
+	//===========Shell Tools==========
+
+	std::string ExecuteShellCommandTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("command")) {
+			return "Error: Missing required argument 'command'.";
+		}
+		std::string command = args["command"].get<std::string>();
+
+		// 为 CreateProcess 准备可写的命令行缓冲区
+		std::vector<char> command_buffer(command.begin(), command.end());
+		command_buffer.push_back('\0');
+
+		HANDLE hChildStd_OUT_Rd = NULL;
+		HANDLE hChildStd_OUT_Wr = NULL;
+		SECURITY_ATTRIBUTES sa;
+
+		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+		sa.bInheritHandle = TRUE;
+		sa.lpSecurityDescriptor = NULL;
+
+		// 创建管道用于捕获子进程的输出
+		if (!CreatePipe(&hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &sa, 0)) {
+			return "Error: Failed to create pipe for command output.";
+		}
+
+		// 确保读句柄不会被子进程继承
+		if (!SetHandleInformation(hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
+			CloseHandle(hChildStd_OUT_Rd);
+			CloseHandle(hChildStd_OUT_Wr);
+			return "Error: Failed to set handle information.";
+		}
+
+		PROCESS_INFORMATION piProcInfo;
+		STARTUPINFOA siStartInfo;
+		ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+		ZeroMemory(&siStartInfo, sizeof(STARTUPINFOA));
+
+		siStartInfo.cb = sizeof(STARTUPINFOA);
+		// 重定向子进程的标准输出和标准错误到我们的管道
+		siStartInfo.hStdError = hChildStd_OUT_Wr;
+		siStartInfo.hStdOutput = hChildStd_OUT_Wr;
+		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+		// 创建子进程来执行命令
+		// 我们通过 cmd.exe /c 来执行命令，这能确保内置命令(如 'dir')也能正常工作
+		std::string cmd_line = "cmd.exe /c " + command;
+		std::vector<char> cmd_line_buffer(cmd_line.begin(), cmd_line.end());
+		cmd_line_buffer.push_back('\0');
+
+		bool bSuccess = CreateProcessA(NULL,
+			cmd_line_buffer.data(), // 命令行
+			NULL,           // 进程句柄不可继承
+			NULL,           // 线程句柄不可继承
+			TRUE,           // 设置句柄可继承
+			CREATE_NO_WINDOW, // 不创建窗口
+			NULL,           // 使用父进程的环境块
+			NULL,           // 使用父进程的起始目录 
+			&siStartInfo,   // 指向 STARTUPINFO 结构
+			&piProcInfo);   // 指向 PROCESS_INFORMATION 结构
+
+		// 必须在创建进程后关闭写句柄，否则 ReadFile 将永远阻塞
+		CloseHandle(hChildStd_OUT_Wr);
+
+		if (!bSuccess) {
+			CloseHandle(hChildStd_OUT_Rd);
+			return "Error: CreateProcess failed to execute command.";
+		}
+
+		// 读取管道中的输出
+		std::string output = "";
+		DWORD dwRead;
+		CHAR chBuf[4096];
+		while (ReadFile(hChildStd_OUT_Rd, chBuf, sizeof(chBuf), &dwRead, NULL) && dwRead != 0) {
+			output.append(chBuf, dwRead);
+		}
+
+		// 等待子进程结束
+		WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+
+		// 清理资源
+		CloseHandle(piProcInfo.hProcess);
+		CloseHandle(piProcInfo.hThread);
+		CloseHandle(hChildStd_OUT_Rd);
+
+		return "Success: Command executed.\nOutput:\n" + output;
+	}
+
+	nlohmann::json ExecuteShellCommandTool::GetDefinition() const {
+		return {
+			{"name", "execute_shell_command"},
+			{"description", "Executes a shell command (via cmd.exe) and returns its standard output and error. This is a powerful tool for system interaction. Use with caution."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"command", {
+						{"type", "string"},
+						{"description", "The command to execute, e.g., 'dir C:\\Users', 'ping google.com', 'echo Hello World'."}
+					}}
+				}},
+				{"required", {"command"}}
+			}}
+		};
+	}
 }

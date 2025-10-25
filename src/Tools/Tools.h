@@ -113,5 +113,61 @@ namespace Razel {
 		std::string Execute(const nlohmann::json& args) override;
 		nlohmann::json GetDefinition() const override;
 	};
+
+	//=======Web Tools========= (新增)
+    // 在浏览器中打开一个URL
+	class OpenURLTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 在浏览器中执行网络搜索
+	class WebSearchTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 获取网页的文本内容
+	class FetchWebpageContentTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+	//=======Window Management Tools========
+    // 获取当前活动窗口的标题
+	class GetActiveWindowTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 切换到指定窗口
+	class SwitchWindowTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 设置窗口的状态 (最小化/最大化/还原)
+	class SetWindowStateTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	class MediaControlTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
     //=======Shell Tools=========
+	// 执行Shell命令并返回输出
+	class ExecuteShellCommandTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
 }

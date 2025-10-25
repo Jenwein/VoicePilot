@@ -1,6 +1,6 @@
 #include "VoiceProcessingPipeline.h"
 #include "../Tools/ToolRegistry.h"
-#include "../Tools/SystemTools.h"
+#include "../Tools/Tools.h"
 #include <iostream>
 #include <thread>
 
@@ -364,9 +364,39 @@ namespace Razel
         std::cout << "[Pipeline] Registering all tools..." << std::endl;
         auto& registry = ToolRegistry::GetInstance();
 
-        registry.RegisterTool<GetCurrentTimeTool>("get_current_time");
-        registry.RegisterTool<WriteFileTool>("write_to_file");
-        registry.RegisterTool<GetKnownFolderPathTool>("get_known_folder_path");
+		//=======System Tools=========
+		registry.RegisterTool<GetCurrentTimeTool>("get_current_time");
+		registry.RegisterTool<GetSystemInfoTool>("get_system_info");
+		registry.RegisterTool<GetNetworkStatusTool>("get_network_status");
+		registry.RegisterTool<GetBatteryStatusTool>("get_battery_status");
+
+		//=======File Tools=========
+		registry.RegisterTool<WriteFileTool>("write_to_file");
+		registry.RegisterTool<ReadFileTool>("read_file");
+		registry.RegisterTool<CreateDirectoryTool>("create_directory");
+		registry.RegisterTool<CopyFileTool>("copy_file");
+		registry.RegisterTool<GetKnownFolderPathTool>("get_known_folder_path");
+		registry.RegisterTool<ListDirectoryTool>("list_directory");
+
+		//=======App Tools=========
+		registry.RegisterTool<GetAvailableApplicationsTool>("get_available_applications");
+		registry.RegisterTool<OpenApplicationTool>("open_application");
+		registry.RegisterTool<SmartOpenApplicationTool>("smart_open_application");
+		registry.RegisterTool<CloseProcessTool>("close_process");
+		registry.RegisterTool<SmartCloseApplicationTool>("smart_close_application");
+
+		//=======Web Tools=========
+		registry.RegisterTool<OpenURLTool>("open_url");
+		registry.RegisterTool<WebSearchTool>("web_search");
+		registry.RegisterTool<FetchWebpageContentTool>("fetch_webpage_content");
+
+		//=======Window Management Tools========
+		registry.RegisterTool<GetActiveWindowTool>("get_active_window");
+		registry.RegisterTool<SwitchWindowTool>("switch_window");
+		registry.RegisterTool<SetWindowStateTool>("set_window_state");
+
+		//=======Multimedia Tools========
+		registry.RegisterTool<MediaControlTool>("media_control");
     }
 
     void VoiceProcessingPipeline::NotifyStage(PipelineStage stage, const std::string& message)
