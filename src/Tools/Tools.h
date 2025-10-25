@@ -170,4 +170,33 @@ namespace Razel {
 		nlohmann::json GetDefinition() const override;
 	};
 
+	//=======Input Simulation Tools========= (新增)
+	// 模拟文本输入
+	class TypeTextTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 模拟按键组合 (快捷键)
+	class PressKeysTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 模拟鼠标移动
+	class MouseMoveTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
+	// 模拟鼠标点击
+	class MouseClickTool : public ITool {
+	public:
+		std::string Execute(const nlohmann::json& args) override;
+		nlohmann::json GetDefinition() const override;
+	};
+
 }

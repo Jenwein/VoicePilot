@@ -1683,4 +1683,290 @@ namespace Razel {
 			}}
 		};
 	}
+	//===========Input Simulation Tools==========
+
+// --- TypeTextTool 实现 ---
+	std::string TypeTextTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("text")) {
+			return "Error: Missing required argument 'text'.";
+		}
+		std::string text = args["text"].get<std::string>();
+
+		// 将 UTF-8 字符串转换为 UTF-16 (wstring)
+		if (text.empty()) {
+			return "Success: Executed with empty text.";
+		}
+		int size_needed = MultiByteToWideChar(CP_UTF8, 0, &text[0], (int)text.size(), NULL, 0);
+		if (size_needed <= 0) {
+			return "Error: Failed to convert text to wide string.";
+		}
+		std::wstring wtext(size_needed, 0);
+		MultiByteToWideChar(CP_UTF8, 0, &text[0], (int)text.size(), &wtext[0], size_needed);
+
+		std::vector<INPUT> inputs;
+		for (wchar_t wc : wtext) {
+			INPUT input_down = { 0 };
+			input_down.type = INPUT_KEYBOARD;
+			input_down.ki.wScan = wc;
+			input_down.ki.dwFlags = KEYEVENTF_UNICODE;
+			inputs.push_back(input_down);
+
+			INPUT input_up = { 0 };
+			input_up.type = INPUT_KEYBOARD;
+			input_up.ki.wScan = wc;
+			input_up.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+			inputs.push_back(input_up);
+		}
+
+		if (!inputs.empty()) {
+			SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+		}
+
+		return "Success: Text typed.";
+	}
+
+	nlohmann::json TypeTextTool::GetDefinition() const {
+		return {
+			{"name", "type_text"},
+			{"description", "Simulates typing a string of text. Supports Unicode characters."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"text", {
+						{"type", "string"},
+						{"description", "The text to be typed."}
+					}}
+				}},
+				{"required", {"text"}}
+			}}
+		};
+	}
+
+	// --- PressKeysTool 实现 ---
+
+	// 辅助函数：将字符串键名映射到虚拟键码
+	WORD StringToVirtualKeyCode(const std::string& key) {
+		static const std::map<std::string, WORD> keyMap = {
+			// 修饰键
+			{"control", VK_CONTROL}, {"ctrl", VK_CONTROL},
+			{"shift", VK_SHIFT},
+			{"alt", VK_MENU},
+			{"win", VK_LWIN}, {"windows", VK_LWIN},
+			// 功能键
+			{"enter", VK_RETURN}, {"return", VK_RETURN},
+			{"tab", VK_TAB},
+			{"escape", VK_ESCAPE}, {"esc", VK_ESCAPE},
+			{"backspace", VK_BACK},
+			{"delete", VK_DELETE}, {"del", VK_DELETE},
+			{"insert", VK_INSERT},
+			{"home", VK_HOME},
+			{"end", VK_END},
+			{"pageup", VK_PRIOR},
+			{"pagedown", VK_NEXT},
+			// 方向键
+			{"left", VK_LEFT},
+			{"right", VK_RIGHT},
+			{"up", VK_UP},
+			{"down", VK_DOWN},
+			// F功能键
+			{"f1", VK_F1}, {"f2", VK_F2}, {"f3", VK_F3}, {"f4", VK_F4},
+			{"f5", VK_F5}, {"f6", VK_F6}, {"f7", VK_F7}, {"f8", VK_F8},
+			{"f9", VK_F9}, {"f10", VK_F10}, {"f11", VK_F11}, {"f12", VK_F12}
+		};
+
+		std::string lower_key = key;
+		std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), ::tolower);
+
+		auto it = keyMap.find(lower_key);
+		if (it != keyMap.end()) {
+			return it->second;
+		}
+
+		// 处理单个字符
+		if (lower_key.length() == 1) {
+			char c = lower_key[0];
+			if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+				return VkKeyScanA(c) & 0xFF;
+			}
+		}
+		return 0; // 未找到
+	}
+
+	std::string PressKeysTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("keys") || !args["keys"].is_array()) {
+			return "Error: Missing or invalid 'keys' argument. It must be an array of strings.";
+		}
+
+		std::vector<WORD> vkeys;
+		for (const auto& key_str : args["keys"]) {
+			WORD vk = StringToVirtualKeyCode(key_str.get<std::string>());
+			if (vk == 0) {
+				return "Error: Invalid key name provided: " + key_str.get<std::string>();
+			}
+			vkeys.push_back(vk);
+		}
+
+		if (vkeys.empty()) {
+			return "Error: No valid keys to press.";
+		}
+
+		std::vector<INPUT> inputs;
+		// 按下所有键
+		for (WORD vk : vkeys) {
+			INPUT input = { 0 };
+			input.type = INPUT_KEYBOARD;
+			input.ki.wVk = vk;
+			inputs.push_back(input);
+		}
+		// 以相反的顺序释放所有键
+		for (auto it = vkeys.rbegin(); it != vkeys.rend(); ++it) {
+			INPUT input = { 0 };
+			input.type = INPUT_KEYBOARD;
+			input.ki.wVk = *it;
+			input.ki.dwFlags = KEYEVENTF_KEYUP;
+			inputs.push_back(input);
+		}
+
+		SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+
+		return "Success: Keys pressed and released.";
+	}
+
+
+	nlohmann::json PressKeysTool::GetDefinition() const {
+		return {
+			{"name", "press_keys"},
+			{"description", "Simulates pressing a combination of keys (keyboard shortcut). For example, to press Ctrl+C, provide ['control', 'c']."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"keys", {
+						{"type", "array"},
+						{"description", "An array of key names to press simultaneously. Common names: 'control', 'shift', 'alt', 'win', 'enter', 'tab', 'esc', 'a', 'b', 'c', 'f1', etc."}
+					}}
+				}},
+				{"required", {"keys"}}
+			}}
+		};
+	}
+
+
+	// --- MouseMoveTool 实现 ---
+	std::string MouseMoveTool::Execute(const nlohmann::json& args) {
+		if (!args.contains("x") || !args.contains("y")) {
+			return "Error: Missing required arguments 'x' or 'y'.";
+		}
+
+		long x = args["x"].get<long>();
+		long y = args["y"].get<long>();
+		bool absolute = args.value("absolute", true);
+
+		INPUT input = { 0 };
+		input.type = INPUT_MOUSE;
+		input.mi.dx = x;
+		input.mi.dy = y;
+		input.mi.dwFlags = MOUSEEVENTF_MOVE;
+
+		if (absolute) {
+			int screen_width = GetSystemMetrics(SM_CXSCREEN);
+			int screen_height = GetSystemMetrics(SM_CYSCREEN);
+			input.mi.dx = (x * 65535) / screen_width;
+			input.mi.dy = (y * 65535) / screen_height;
+			input.mi.dwFlags |= MOUSEEVENTF_ABSOLUTE;
+		}
+
+		SendInput(1, &input, sizeof(INPUT));
+		return "Success: Mouse moved.";
+	}
+
+	nlohmann::json MouseMoveTool::GetDefinition() const {
+		return {
+			{"name", "move_mouse"},
+			{"description", "Moves the mouse cursor to specific coordinates or by a relative amount."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"x", {
+						{"type", "integer"},
+						{"description", "The horizontal position (or offset if relative)."}
+					}},
+					{"y", {
+						{"type", "integer"},
+						{"description", "The vertical position (or offset if relative)."}
+					}},
+					{"absolute", {
+						{"type", "boolean"},
+						{"description", "If true (default), x and y are absolute screen coordinates. If false, they are relative offsets from the current position."}
+					}}
+				}},
+				{"required", {"x", "y"}}
+			}}
+		};
+	}
+
+
+	// --- MouseClickTool 实现 ---
+	std::string MouseClickTool::Execute(const nlohmann::json& args) {
+		std::string button = args.value("button", "left");
+		bool double_click = args.value("double_click", false);
+		std::transform(button.begin(), button.end(), button.begin(), ::tolower);
+
+		DWORD down_flag = 0, up_flag = 0;
+		if (button == "left") {
+			down_flag = MOUSEEVENTF_LEFTDOWN;
+			up_flag = MOUSEEVENTF_LEFTUP;
+		}
+		else if (button == "right") {
+			down_flag = MOUSEEVENTF_RIGHTDOWN;
+			up_flag = MOUSEEVENTF_RIGHTUP;
+		}
+		else if (button == "middle") {
+			down_flag = MOUSEEVENTF_MIDDLEDOWN;
+			up_flag = MOUSEEVENTF_MIDDLEUP;
+		}
+		else {
+			return "Error: Invalid button specified. Use 'left', 'right', or 'middle'.";
+		}
+
+		std::vector<INPUT> inputs;
+		int click_count = double_click ? 2 : 1;
+
+		for (int i = 0; i < click_count; ++i) {
+			INPUT input_down = { 0 };
+			input_down.type = INPUT_MOUSE;
+			input_down.mi.dwFlags = down_flag;
+			inputs.push_back(input_down);
+
+			INPUT input_up = { 0 };
+			input_up.type = INPUT_MOUSE;
+			input_up.mi.dwFlags = up_flag;
+			inputs.push_back(input_up);
+		}
+
+		SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+
+		return "Success: Mouse click performed.";
+	}
+
+	nlohmann::json MouseClickTool::GetDefinition() const {
+		return {
+			{"name", "mouse_click"},
+			{"description", "Simulates a mouse click."},
+			{"parameters", {
+				{"type", "object"},
+				{"properties", {
+					{"button", {
+						{"type", "string"},
+						{"description", "The button to click. 'left' (default), 'right', or 'middle'."}
+					}},
+					{"double_click", {
+						{"type", "boolean"},
+						{"description", "Set to true to perform a double-click. Default is false."}
+					}}
+				}},
+				{"required", {}}
+			}}
+		};
+	}
+
 }

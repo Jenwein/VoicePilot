@@ -397,6 +397,12 @@ namespace Razel
 
 		//=======Multimedia Tools========
 		registry.RegisterTool<MediaControlTool>("media_control");
+
+		//=======Input Simulation Tools========
+		registry.RegisterTool<TypeTextTool>("type_text");
+		registry.RegisterTool<PressKeysTool>("press_keys");
+		registry.RegisterTool<MouseMoveTool>("move_mouse");
+		registry.RegisterTool<MouseClickTool>("mouse_click");
     }
 
     void VoiceProcessingPipeline::NotifyStage(PipelineStage stage, const std::string& message)
