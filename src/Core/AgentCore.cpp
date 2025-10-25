@@ -114,7 +114,7 @@ namespace Razel
             return;
         }
 
-        std::cout << "[AgentCore] Cancelling current operation..." << std::endl;
+        std::cout << "[AgentCore] canceling current operation..." << std::endl;
 
         switch (m_CurrentState)
         {

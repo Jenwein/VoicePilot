@@ -94,7 +94,6 @@ namespace Razel
         }
     }
 
-    // === Chat功能 (新实现) ===
     bool AIServiceWrapper::CreateChatSession(const std::string& toolsFile)
     {
         if (!m_Initialized)
@@ -332,14 +331,12 @@ namespace Razel
         }
     }
 
-    // === 私有方法 (简化版) ===
     AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
     {
 		PythonCILAcquire pythonScope;
 
         try
         {
-            py::gil_scoped_acquire acquire;
             std::cout << "[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===" << std::endl;
             std::cout << "[AIServiceWrapper] Function: " << functionName << std::endl;
             std::cout << "[AIServiceWrapper] Arguments: " << args.dump(2) << std::endl;

@@ -39,7 +39,7 @@ namespace Razel
 		}
 		~PythonCILAcquire()
 		{
-			std::cout << "[PythonManager] Acquire thread GIL..." << std::endl;
+			std::cout << "[PythonManager] Releasing thread GIL..." << std::endl;
 
 		}
 

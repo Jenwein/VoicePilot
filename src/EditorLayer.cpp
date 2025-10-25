@@ -136,7 +136,7 @@ namespace Razel {
 			int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
 			m_HoveredEntity = pixelData == -1 ? Entity() : Entity((entt::entity)pixelData, m_ActiveScene.get());
 			m_CurrentPixelData = pixelData;
-			RZ_CORE_WARN("Pixel data = {0}", pixelData);
+			//RZ_CORE_WARN("Pixel data = {0}", pixelData);
 		}
 
 		OnOverlayRender();
@@ -536,9 +536,18 @@ namespace Razel {
 		}
 		case AgentState::Speaking:
 		{
-			m_SpeakingTime += ts;
-
-			// TODO
+			if (m_RotatingUp)
+			{
+				m_SpeakingRotation += m_SpeakingSpeed;
+				if (m_SpeakingRotation >= 45.0f)
+					m_RotatingUp = false;
+			}
+			else
+			{
+				m_SpeakingRotation -= m_SpeakingSpeed;
+				if (m_SpeakingRotation <= -45.0f)
+					m_RotatingUp = true;
+			}
 		}
 		}
 	}

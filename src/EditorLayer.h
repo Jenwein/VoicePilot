@@ -88,9 +88,8 @@ namespace Razel {
 		// Editor resources
 		Ref<Texture2D> m_IconPlay, m_IconStop;
 
-
-		Scope<PythonCILRelease> m_GilGuard;
 		Scope<AgentCore> m_AgentCore;
+		Scope<PythonCILRelease> m_GilGuard;
 		Entity m_VoiceAssistantEntity;
 
 		// Voice assistant model animation variables

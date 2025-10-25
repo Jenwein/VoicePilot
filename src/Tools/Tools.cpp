@@ -1842,7 +1842,8 @@ namespace Razel {
 				{"properties", {
 					{"keys", {
 						{"type", "array"},
-						{"description", "An array of key names to press simultaneously. Common names: 'control', 'shift', 'alt', 'win', 'enter', 'tab', 'esc', 'a', 'b', 'c', 'f1', etc."}
+						{"description", "An array of key names to press simultaneously. Common names: 'control', 'shift', 'alt', 'win', 'enter', 'tab', 'esc', 'a', 'b', 'c', 'f1', etc."},
+						{"items", {{"type", "string"}}}
 					}}
 				}},
 				{"required", {"keys"}}
@@ -1964,7 +1965,7 @@ namespace Razel {
 						{"description", "Set to true to perform a double-click. Default is false."}
 					}}
 				}},
-				{"required", {}}
+				{"required", nlohmann::json::array()}
 			}}
 		};
 	}
