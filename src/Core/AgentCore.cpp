@@ -9,6 +9,12 @@ namespace Razel
     AgentCore::AgentCore()
         : AgentCore(VoiceAssistantConfig{})
     {
+		//if ()
+		//{
+		//	std::cerr << "[Pipeline] Failed to create Chat session: " << m_AIServiceWrapper->GetLastError() << std::endl;
+		//	return false;
+		//}
+
     }
 
     AgentCore::AgentCore(const VoiceAssistantConfig& config)
@@ -24,20 +30,36 @@ namespace Razel
         m_AudioManager = CreateScope<AudioManager>();
 
         // 创建Pipeline
-        m_Pipeline = CreateScope<VoiceProcessingPipeline>();
-        
+		m_AIServiceWrapper = CreateRef<AIServiceWrapper>();
+		if (!m_AIServiceWrapper->Initialize())
+		{
+			std::cerr << "[AgentCore] Failed to initialize AI Service: "
+				<< m_AIServiceWrapper->GetLastError() << std::endl;
+		}
+		else
+		{
+			std::cout << "[AgentCore] AI Service initialized successfully." << std::endl;
+		}
+
+        m_Pipeline = CreateScope<VoiceProcessingPipeline>(m_AIServiceWrapper);
+
         // 设置Pipeline回调（线程安全包装）
         m_Pipeline->SetStageCallback([this](PipelineStage stage, const std::string& message) {
             OnPipelineStageChanged(stage, message);
         });
 
         SaveToolDefinitionsToFile();
+
+		if (!m_AIServiceWrapper->CreateChatSession(m_Config.toolDefsPath))
+		{
+			std::cerr << "[Pipeline] Failed to create Chat session: " << m_AIServiceWrapper->GetLastError() << std::endl;
+		}
+        m_PythonGILRelease = CreateScope<PythonGILRelease>();
         std::cout << "[AgentCore] Initialized successfully." << std::endl;
     }
 
     AgentCore::~AgentCore()
-    {
-        // 取消任何正在进行的操作
+	{        
         CancelOperation();
     }
 

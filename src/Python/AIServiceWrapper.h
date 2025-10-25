@@ -39,8 +39,8 @@ namespace Razel
         AIResult TranscribeAudio(const std::string& audioFilePath = "");
 
         // === LLM功能 (重构为Chat) ===
-        // 创建Chat会话
         bool CreateChatSession(const std::string& toolsFile);
+        bool DestroyChatSession();
         
         // 处理用户消息
         AIResult ProcessUserMessage(const std::string& userMessage);
@@ -48,8 +48,6 @@ namespace Razel
         // 发送工具执行结果
         AIResult SendToolResults(const nlohmann::json& toolResults);
         
-        // 销毁Chat会话
-        bool DestroyChatSession();
 
         AIResult SynthesizeSpeech(const std::string& text,
             const std::string& outputFilePath = "");
@@ -59,10 +57,6 @@ namespace Razel
 
         // 检查是否已初始化
         bool IsInitialized() const { return m_Initialized; }
-
-        // 检查Chat会话是否已创建
-        bool IsChatSessionActive() const { return m_ChatSessionActive; }
-
     private:
         // 调用Python函数的通用方法
         AIResult CallPythonFunction(const std::string& functionName,
@@ -78,7 +72,6 @@ namespace Razel
         //std::unique_ptr<PythonCILRelease> m_GILRelease;
         
         bool m_Initialized = false;
-        bool m_ChatSessionActive = false;
         std::string m_LastError;
         
     };

@@ -10,45 +10,45 @@
 namespace py = pybind11;
 namespace Razel
 {
-	class PythonCILRelease
+	class PythonGILRelease
 	{
 	public:
-		PythonCILRelease()
+		PythonGILRelease()
 			:m_Release(std::make_unique<py::gil_scoped_release>())
 		{
 			std::cout << "[PythonManager] Main thread Releasing  GIL..." << std::endl;
 			
 		}
-		~PythonCILRelease()
+		~PythonGILRelease()
 		{
 			std::cout << "[PythonManager] Re-acquiring main thread GIL..." << std::endl;
 		}
 
-		PythonCILRelease(const PythonCILRelease&) = delete;
-		PythonCILRelease& operator=(const PythonCILRelease&) = delete;
-		PythonCILRelease(PythonCILRelease&&) = delete;
-		PythonCILRelease& operator=(PythonCILRelease&&) = delete;
+		PythonGILRelease(const PythonGILRelease&) = delete;
+		PythonGILRelease& operator=(const PythonGILRelease&) = delete;
+		PythonGILRelease(PythonGILRelease&&) = delete;
+		PythonGILRelease& operator=(PythonGILRelease&&) = delete;
 	private:
 		std::unique_ptr<py::gil_scoped_release> m_Release;
 	};
-	class PythonCILAcquire
+	class PythonGILAcquire
 	{
 	public:
-		PythonCILAcquire()
+		PythonGILAcquire()
 			:m_acquire (std::make_unique<py::gil_scoped_acquire>())
 		{
 			std::cout << "[PythonManager] Acquire thread GIL..." << std::endl;
 		}
-		~PythonCILAcquire()
+		~PythonGILAcquire()
 		{
 			std::cout << "[PythonManager] Releasing thread GIL..." << std::endl;
 
 		}
 
-		PythonCILAcquire(const PythonCILAcquire&) = delete;
-		PythonCILAcquire& operator=(const PythonCILAcquire&) = delete;
-		PythonCILAcquire(PythonCILAcquire&&) = delete;
-		PythonCILAcquire& operator=(PythonCILAcquire&&) = delete;
+		PythonGILAcquire(const PythonGILAcquire&) = delete;
+		PythonGILAcquire& operator=(const PythonGILAcquire&) = delete;
+		PythonGILAcquire(PythonGILAcquire&&) = delete;
+		PythonGILAcquire& operator=(PythonGILAcquire&&) = delete;
 	private:
 		std::unique_ptr<py::gil_scoped_acquire> m_acquire;
 	};

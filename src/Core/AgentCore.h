@@ -6,7 +6,6 @@
 #include "VoiceProcessingPipeline.h"
 #include "../Audio/AudioManager.h"
 #include "../Python/AIServiceWrapper.h"
-#include "../Python/PythonManager.h"
 namespace Razel
 {
     enum class AgentState
@@ -75,5 +74,7 @@ namespace Razel
         Scope<AudioManager> m_AudioManager;
 
         Scope<VoiceProcessingPipeline> m_Pipeline;
+        Ref<AIServiceWrapper> m_AIServiceWrapper;
+        Scope<PythonGILRelease> m_PythonGILRelease;
     };
 }
