@@ -37,6 +37,7 @@ namespace Razel
 
         void StartListening();  // 开始录音
         void StopListening();   // 停止录音，自动开始处理
+        void StartSpeaking(const std::string& filePath);
         void CancelOperation(); // 取消当前操作
         
         AgentState GetCurrentState() const;
@@ -48,7 +49,7 @@ namespace Razel
         void ProcessVoiceRequestAsync();
     private:
         void OnProcessingComplete(const PipelineResult& result);
-
+        void OnPlaybackFinished();
         void ChangeState(AgentState newState);
         bool CanTransitionTo(AgentState newState) const;
 

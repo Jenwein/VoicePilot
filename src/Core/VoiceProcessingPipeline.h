@@ -14,10 +14,11 @@ namespace Razel
     {
         bool success;
         std::string responseText;
+		std::string outputFilePath;
         std::string errorMessage;
 
-        PipelineResult(bool s = false, const std::string& response = "", const std::string& error = "")
-            : success(s), responseText(response), errorMessage(error) {}
+        PipelineResult(bool s = false, const std::string& response = "", const std::string& path = "", const std::string& error = "")
+            : success(s), responseText(response), outputFilePath(path), errorMessage(error) { }
 
         static PipelineResult Success(const std::string& response)
         {
@@ -37,7 +38,6 @@ namespace Razel
         LLM,            // 大语言模型处理
         ToolExecution,  // 工具执行
         TTS,            // 文本转语音
-        AudioPlayback   // 音频播放
     };
 
     class VoiceProcessingPipeline
@@ -70,7 +70,7 @@ namespace Razel
         PipelineResult PerformASR(const std::string& audioFilePath);
         PipelineResult ProcessWithLLM(const std::string& userRequest, const std::string& toolDefsPath);
         PipelineResult GenerateTTS(const std::string& responseText, const std::string& outputPath);
-        PipelineResult PlayAudio(const std::string& audioPath);
+        //PipelineResult PlayAudio(const std::string& audioPath);
 
         // LLM处理的内部方法
         bool ProcessUserRequestWithChat(const std::string& userRequest, const std::string& toolDefsPath, std::string& finalResponse);

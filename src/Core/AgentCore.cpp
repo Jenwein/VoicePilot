@@ -87,7 +87,25 @@ namespace Razel
         ProcessVoiceRequestAsync();
     }
 
-    void AgentCore::CancelOperation()
+	void AgentCore::StartSpeaking(const std::string& filePath)
+	{
+		std::lock_guard<std::mutex> lock(m_StateMutex);
+
+		if (!CanTransitionTo(AgentState::Speaking))
+		{
+			std::cout << "[AgentCore] Cannot start speaking: Invalid state transition from "
+				<< static_cast<int>(m_CurrentState) << std::endl;
+			return;
+		}
+
+		ChangeState(AgentState::Speaking);
+        m_AudioManager->PlayAudioFile(filePath, [this]() {
+            this->OnPlaybackFinished();
+			});        
+		std::cout << "[AgentCore] Started speaking..." << std::endl;
+	}
+
+	void AgentCore::CancelOperation()
     {
         std::lock_guard<std::mutex> lock(m_StateMutex);
         
@@ -193,6 +211,7 @@ namespace Razel
 
         if (result.success)
         {
+            StartSpeaking(m_Config.outputAudioPath);
             std::cout << "[AgentCore] Voice request processing completed successfully." << std::endl;
         }
         else
@@ -202,13 +221,22 @@ namespace Razel
         }
 
         // 成功完成，返回Idle状态
-        {
-            std::lock_guard<std::mutex> lock(m_StateMutex);
-            ChangeState(AgentState::Idle);
-        }
+        //{
+        //    std::lock_guard<std::mutex> lock(m_StateMutex);
+        //    ChangeState(AgentState::Idle);
+        //}
     }
 
-    void AgentCore::ChangeState(AgentState newState)
+	void AgentCore::OnPlaybackFinished()
+	{
+		std::lock_guard<std::mutex> lock(m_StateMutex);
+		if (m_CurrentState == AgentState::Speaking)
+		{
+			ChangeState(AgentState::Idle);
+		}
+	}
+
+	void AgentCore::ChangeState(AgentState newState)
     {
         if (newState == m_CurrentState)
         {
@@ -263,25 +291,18 @@ namespace Razel
         // 注意：这个方法会在Pipeline的后台线程中被调用
         std::lock_guard<std::mutex> lock(m_StateMutex);
         
-        switch (stage)
+        //switch (stage)
+        //{
+        //    case PipelineStage::ASR:
+        //    case PipelineStage::LLM:
+        //    case PipelineStage::ToolExecution:
+        //    case PipelineStage::TTS:
+        if (m_CurrentState != AgentState::Processing)
         {
-            case PipelineStage::ASR:
-            case PipelineStage::LLM:
-            case PipelineStage::ToolExecution:
-            case PipelineStage::TTS:
-                if (m_CurrentState != AgentState::Processing)
-                {
-                    ChangeState(AgentState::Processing);
-                }
-                break;
-                
-            case PipelineStage::AudioPlayback:
-                if (m_CurrentState != AgentState::Speaking)
-                {
-                    ChangeState(AgentState::Speaking);
-                }
-                break;
+            ChangeState(AgentState::Processing);
         }
+		//       break;
+		//}
         
         // 可以在这里添加更详细的进度信息传递给UI
         std::cout << "[AgentCore] Pipeline: " << message << std::endl;

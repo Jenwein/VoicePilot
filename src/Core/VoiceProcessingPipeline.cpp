@@ -107,13 +107,6 @@ namespace Razel
                 return ttsResult.success ? PipelineResult::Error("Processing cancelled") : ttsResult;
             }
 
-            // 步骤4: 音频播放
-            auto playResult = PlayAudio(outputPath);
-            if (!playResult.success || CheckCancellation())
-            {
-                return playResult.success ? PipelineResult::Error("Processing cancelled") : playResult;
-            }
-
             std::cout << "[Pipeline] Voice processing pipeline completed successfully." << std::endl;
             return PipelineResult::Success(llmResult.responseText);
         }
@@ -194,21 +187,21 @@ namespace Razel
         return PipelineResult::Success(responseText);
     }
 
-    PipelineResult VoiceProcessingPipeline::PlayAudio(const std::string& audioPath)
-    {
-        NotifyStage(PipelineStage::AudioPlayback, "Starting audio playback...");
+    //PipelineResult VoiceProcessingPipeline::PlayAudio(const std::string& audioPath)
+    //{
+    //    NotifyStage(PipelineStage::AudioPlayback, "Starting audio playback...");
 
-        try
-        {
-            m_AudioManager->PlayAudioFile(audioPath);
-            NotifyStage(PipelineStage::AudioPlayback, "Audio playback completed");
-            return PipelineResult::Success("");
-        }
-        catch (const std::exception& e)
-        {
-            return PipelineResult::Error("Audio playback failed: " + std::string(e.what()));
-        }
-    }
+    //    try
+    //    {
+    //        m_AudioManager->PlayAudioFile(audioPath);
+    //        NotifyStage(PipelineStage::AudioPlayback, "Audio playback completed");
+    //        return PipelineResult::Success("");
+    //    }
+    //    catch (const std::exception& e)
+    //    {
+    //        return PipelineResult::Error("Audio playback failed: " + std::string(e.what()));
+    //    }
+    //}
 
     bool VoiceProcessingPipeline::ProcessUserRequestWithChat(const std::string& userRequest, const std::string& toolDefsPath, std::string& finalResponse)
     {
