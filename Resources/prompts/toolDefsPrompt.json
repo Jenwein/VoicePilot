@@ -14,7 +14,7 @@
         "parameters": {
             "properties": {
                 "folder_name": {
-                    "description": "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads'.",
+                    "description": "The name of the folder to query. Supported values: 'desktop', 'documents', 'downloads','pictures', 'music', 'videos'.",
                     "type": "string"
                 }
             },
