@@ -1,0 +1,24 @@
+{
+  "applications": {
+    "wechat": {
+      "aliases": ["微信", "wechat"],
+      "path": "C:\\Program Files (x86)\\Tencent\\WeChat\\WeChat.exe",
+      "processName": "WeChat.exe"
+    },
+    "vscode": {
+      "aliases": ["vscode", "vs code", "visual studio code"],
+      "path": "C:\\Users\\YourUser\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+      "processName": "Code.exe"
+    },
+    "chrome": {
+      "aliases": ["chrome", "谷歌", "谷歌浏览器"],
+      "path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "processName": "chrome.exe"
+    },
+    "notepad": {
+        "aliases": ["记事本", "notepad"],
+        "path": "notepad.exe",
+        "processName": "notepad.exe"
+    }
+  }
+}
