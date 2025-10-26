@@ -41,6 +41,8 @@ namespace Razel {
 		void OnDuplicateEntity();
 
 		void UpdateVoiceAssistantModel(float ts);
+
+		std::string GetStateDisplayText() const;
 		// UI Panels
 		void UI_ToolBars();
 	private:

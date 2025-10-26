@@ -229,7 +229,7 @@ namespace Razel
 			std::filesystem::path currentPath = std::filesystem::current_path();
 			AddPythonPath(currentPath.string());
 
-			// 添加 scripts 目录到 Python 路径（假设 ai_service.py 在这里）
+			// 添加 scripts 目录到 Python 路径
 			std::filesystem::path scriptsPath = currentPath / "scripts";
 			if (std::filesystem::exists(scriptsPath))
 			{

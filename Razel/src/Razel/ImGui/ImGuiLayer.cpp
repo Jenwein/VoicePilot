@@ -36,8 +36,11 @@ namespace Razel
 		//io.ConfigViewportsNoTaskBarIcon = true;
 
 		float fontSize = 20.0f;
-		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", fontSize);
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", fontSize);
+		//io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", fontSize);
+		//io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", fontSize);
+
+		const char* font_path = "assets/fonts/LXGW/LXGWWenKaiMono-Regular.ttf";
+		io.Fonts->AddFontFromFileTTF(font_path, fontSize, nullptr, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
 		// Setup Dear ImGui style
 		ImGui::StyleColorsDark();

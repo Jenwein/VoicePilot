@@ -21,6 +21,7 @@ namespace Razel {
 
 	Application* CreateApplication()
 	{
+
 		return new VoicePilot();
 	}
 

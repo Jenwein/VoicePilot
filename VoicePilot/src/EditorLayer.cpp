@@ -148,9 +148,7 @@ namespace Razel {
 	void EditorLayer::OnImGuiRender()
 	{
 		RZ_PROFILE_FUNCTION();
-
 		// Note: Switch this to true to enable dockspace
-
 		static bool dockspaceOpen = true;						// 停靠空间开启
 		static bool opt_fullscreen_persistant = true;			// 全屏持久化
 		bool opt_fullscreen = opt_fullscreen_persistant;		// 全屏
@@ -191,7 +189,7 @@ namespace Razel {
 
 		// Submit the DockSpace
 		ImGuiIO& io = ImGui::GetIO();
-
+		
 		ImGuiStyle& style = ImGui::GetStyle();
 		float minWinSizeX = style.WindowMinSize.x;
 		style.WindowMinSize.x = 370.0f;
@@ -215,24 +213,23 @@ namespace Razel {
 
 		if (ImGui::BeginMenuBar())
 		{
-			if (ImGui::BeginMenu("File"))
+			if (ImGui::BeginMenu("Options"))
 			{
 				// Disabling fullscreen would allow the window to be moved to the front of other windows,
 				// which we can't undo at the moment without finer window depth/z control.
 
-				if (ImGui::MenuItem("New", "Ctrl+N"))
-				{
-					NewScene();
-				}
-				if (ImGui::MenuItem("Open...", "Ctrl+O"))
-				{
-					OpenScene();
-				}
-				if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
-				{
-					SaveSceneAs();
-				}
-
+				//if (ImGui::MenuItem("New", "Ctrl+N"))
+				//{
+				//	NewScene();
+				//}
+				//if (ImGui::MenuItem("Open...", "Ctrl+O"))
+				//{
+				//	OpenScene();
+				//}
+				//if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
+				//{
+				//	SaveSceneAs();
+				//}
 
 				if (ImGui::MenuItem("Exit")) Application::Get().Close();
 				ImGui::EndMenu();
@@ -242,32 +239,18 @@ namespace Razel {
 		}
 
 		// Voice Pilot
-		// 显示当前的AI助手的内容及任务(以及开始停止等信息)
-		//ImGui::Begin("Content");
-		////TODO:
-		//ImGui::End();
 
+		ImGui::Begin("StateWindow", nullptr, ImGuiWindowFlags_NoTitleBar);
 
-		//AgentState currentState = m_AgentCore->GetCurrentState();
-		//switch (currentState)
-		//{
-		//}
+		ImVec2 windowPos = ImGui::GetWindowPos();
+		ImVec2 windowSize = ImGui::GetWindowSize();
+		ImVec2 center = ImVec2(windowPos.x + windowSize.x * 0.5f, windowPos.y + windowSize.y * 0.5f);
+		float radius = windowSize.x * 0.5f;
+		ImGui::GetWindowDrawList()->AddCircleFilled(center, radius, IM_COL32(50, 50, 50, 180));
+		ImGui::TextWrapped("%s", GetStateDisplayText().c_str());
 
-		ImGui::Begin("TODO");
-		if (ImGui::Button("test_ExecPython"))
-		{
-			//m_AgentCore->ProcessAudio("Resources/audios/input.wav");
-			m_AgentCore->ProcessVoiceRequestAsync();
-		}
-		
-		//TODO:
 		ImGui::End();
-
-		// TODO: 添加悬浮球的UI，当主界面最小化后显示悬浮球
-		//ImGui::Begin("悬浮球");
-		////TODO:作为一个悬浮球
-		//ImGui::End();
-
+	
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
@@ -549,6 +532,27 @@ namespace Razel {
 			//		m_RotatingUp = true;
 			//}
 		}
+		}
+	}
+
+	std::string EditorLayer::GetStateDisplayText() const
+	{
+		if (!m_AgentCore)
+			return "点击兔子开始说话,再次点击停止说话并发送请求";
+
+		AgentState currentState = m_AgentCore->GetCurrentState();
+		switch (currentState)
+		{
+		case AgentState::Idle:
+			return "点击兔子开始说话,再次点击停止说话并发送请求";
+		case AgentState::Listening:
+			return "正在录音中...再次点击兔子停止录音";
+		case AgentState::Processing:
+			return "正在处理您的请求,请稍候...";
+		case AgentState::Speaking:
+			return "正在播放回复...";
+		default:
+			return "点击兔子开始说话,再次点击停止说话并发送请求";
 		}
 	}
 

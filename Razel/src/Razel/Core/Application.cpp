@@ -20,7 +20,7 @@ namespace Razel {
 		RZ_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
-		m_Window = Window::Create(WindowProps(name));
+		m_Window = Window::Create(WindowProps(name,400,600));
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
 		Renderer::Init();
