@@ -200,7 +200,11 @@ namespace Razel
             }
         }
         
+        m_AudioManager->OnUpdate();
+
         // TODO: 添加超时检查
+        // 
+        // 
         // TODO: 添加其他定期检查逻辑
     }
 

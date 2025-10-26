@@ -267,7 +267,7 @@ class ChatSession:
                 "details": str(e)
             }
 
-# --- 4. 核心功能函数 (重构版) ---
+# --- 4. 核心功能函数 ---
 
 def transcribe_audio(audio_file_path: str = None) -> dict:
     """
@@ -327,6 +327,64 @@ def transcribe_audio(audio_file_path: str = None) -> dict:
     except Exception as e:
         error_msg = f"音频转录失败: {str(e)}"
         logging.error(error_msg)
+        return {
+            "error": "音频转录失败",
+            "details": str(e)
+        }
+
+def transcribe_audio_bytes(audio_bytes: bytes) -> dict:
+    """
+    音频转录函数 (从内存中的字节数据)
+    
+    Args:
+        audio_bytes (bytes): 音频文件的原始字节数据.
+    
+    Returns:
+        dict: 包含转录结果或错误的字典.
+    """
+    if not audio_bytes:
+        error_msg = "传入的音频数据为空"
+        logging.error(error_msg)
+        return {
+            "error": "无效输入",
+            "details": error_msg
+        }
+        
+    logging.info(f'收到音频转录请求: 数据大小={len(audio_bytes)} bytes')
+    
+    try:
+        client = _get_client()
+        logging.info("正在调用 Gemini ASR API...")
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[
+                'Transcribe the speech to plain Simplified Chinese text. Output only the transcribed text, without any explanations, tags, or formatting.',
+                # 直接使用传入的参数 audio_bytes
+                types.Part.from_bytes(
+                    data=audio_bytes,
+                    mime_type='audio/wav',
+                )
+            ]
+        )
+        
+        if response.text:
+            transcript = response.text.strip()
+            logging.info(f"转录成功: {transcript}")
+            return {
+                "status": "success",
+                "transcript": transcript
+            }
+        else:
+            error_msg = "API未返回转录文本"
+            logging.error(error_msg)
+            return {
+                "error": "转录失败",
+                "details": error_msg
+            }
+            
+    except Exception as e:
+        error_msg = f"音频转录失败: {str(e)}"
+        logging.error(error_msg, exc_info=True) # exc_info=True 可以记录更详细的堆栈信息
         return {
             "error": "音频转录失败",
             "details": str(e)
