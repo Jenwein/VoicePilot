@@ -17,7 +17,7 @@ namespace Razel
 		//Shutdown();
 	}
 
-	bool PythonManager::Initialize()
+	bool PythonManager::Initialize(const std::wstring& pythonHome)
 	{
 		if (m_Initialized)
 		{
@@ -26,15 +26,22 @@ namespace Razel
 
 		try
 		{
-			// ³õÊ¼»¯ Python ½âÊÍÆ÷
+
+			std::wstring pythonHome = std::filesystem::current_path().wstring();
+			Py_SetPythonHome(pythonHome.c_str());
+
+			// åˆå§‹åŒ– Python è§£é‡Šå™¨
 			m_Interpreter = std::make_unique<py::scoped_interpreter>();
 
-			// ÉèÖÃ Python »·¾³
+			// è®¾ç½® Python ç¯å¢ƒ
 			m_Initialized = true;
 			SetupPythonEnvironment();
 
 			std::cout << "Python Manager initialized successfully." << std::endl;
 			std::cout << "Python version: " << GetPythonVersion() << std::endl;
+
+			py::module sys = py::module::import("sys");
+			std::cout << "Python prefix: " << sys.attr("prefix").cast<std::string>() << std::endl;
 
 			return true;
 		}
@@ -82,12 +89,12 @@ namespace Razel
 					{
 						pyArgs[key.c_str()] = value.get<bool>();
 					}
-					// ÆäËûÀàĞÍ¿ÉÒÔ¸ù¾İĞèÒªÀ©Õ¹
+					// å…¶ä»–ç±»å‹å¯ä»¥æ ¹æ®éœ€è¦æ‰©å±•
 				}
 				pyResult = pyFunction(**pyArgs);
 			}
 
-			// ½«Python½á¹û×ª»»ÎªJSON×Ö·û´®
+			// å°†Pythonç»“æœè½¬æ¢ä¸ºJSONå­—ç¬¦ä¸²
 			py::module json_module = py::module::import("json");
 			py::object jsonObj = json_module.attr("dumps")(pyResult, py::arg("ensure_ascii") = false);
 			std::string jsonString = jsonObj.cast<std::string>();
@@ -148,7 +155,7 @@ namespace Razel
 			py::module sys = py::module::import("sys");
 			py::list sys_path = sys.attr("path");
 
-			// ¼ì²éÂ·¾¶ÊÇ·ñÒÑ´æÔÚ
+			// æ£€æŸ¥è·¯å¾„æ˜¯å¦å·²å­˜åœ¨
 			bool pathExists = false;
 			for (const auto& existingPath : sys_path)
 			{
@@ -225,30 +232,33 @@ namespace Razel
 	{
 		try
 		{
-			// Ìí¼Óµ±Ç°¹¤×÷Ä¿Â¼µ½ Python Â·¾¶
+			// æ·»åŠ å½“å‰å·¥ä½œç›®å½•åˆ° Python è·¯å¾„
 			std::filesystem::path currentPath = std::filesystem::current_path();
 			AddPythonPath(currentPath.string());
 
-			// Ìí¼Ó scripts Ä¿Â¼µ½ Python Â·¾¶
+			// æ·»åŠ  scripts ç›®å½•åˆ° Python è·¯å¾„
 			std::filesystem::path scriptsPath = currentPath / "scripts";
 			if (std::filesystem::exists(scriptsPath))
 			{
 				AddPythonPath(scriptsPath.string());
 			}
 
-			// ÉèÖÃPython±àÂëÎªUTF-8£¨Windows¼æÈİĞÔ£©
+			AddPythonPath((currentPath.parent_path() / "VoicePilot" / "scripts").string());
+			AddPythonPath((currentPath / "vendor" / "python" / "embeddable" / "lib" / "site-packages").string());
+
+			// è®¾ç½®Pythonç¼–ç ä¸ºUTF-8ï¼ˆWindowså…¼å®¹æ€§ï¼‰
 			ExecuteCode("import sys; import os; import locale");
 			ExecuteCode("import codecs");
 
-			// ÉèÖÃ»·¾³±äÁ¿
+			// è®¾ç½®ç¯å¢ƒå˜é‡
 			ExecuteCode("os.environ['PYTHONIOENCODING'] = 'utf-8'");
 			ExecuteCode("os.environ['LANG'] = 'en_US.UTF-8'");
 
-			// ÉèÖÃ±ê×¼Êä³ö±àÂë
+			// è®¾ç½®æ ‡å‡†è¾“å‡ºç¼–ç 
 			ExecuteCode("sys.stdout.reconfigure(encoding='utf-8')");
 			ExecuteCode("sys.stderr.reconfigure(encoding='utf-8')");
 
-			// ÑéÖ¤ÖØÒªµÄÄ£¿éÊÇ·ñ¿ÉÓÃ
+			// éªŒè¯é‡è¦çš„æ¨¡å—æ˜¯å¦å¯ç”¨
 			try
 			{
 				py::module::import("json");

@@ -46,6 +46,7 @@
 			{
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll\" \"%{cfg.targetdir}\""),
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\""),
+				("{COPY} \"%{wks.location}/VoicePilot/vendor/python/bin/python312.dll\" \"%{cfg.targetdir}\""),
 			}
 
 		filter "configurations:Debug"

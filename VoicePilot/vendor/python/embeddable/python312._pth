@@ -1,0 +1,6 @@
+python312.zip
+.
+lib
+lib\site-packages  # 如果有site-packages文件夹，添加这一行
+# Uncomment to run site.main() automatically
+import site
