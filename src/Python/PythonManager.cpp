@@ -14,7 +14,7 @@ namespace Razel
 
 	PythonManager::~PythonManager()
 	{
-		Shutdown();
+		//Shutdown();
 	}
 
 	bool PythonManager::Initialize()
@@ -106,6 +106,7 @@ namespace Razel
 		{
 			try
 			{
+				m_Module = py::module();
 				m_Interpreter.reset();
 				m_Initialized = false;
 				std::cout << "Python Manager shutdown successfully." << std::endl;

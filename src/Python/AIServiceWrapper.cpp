@@ -10,12 +10,14 @@ namespace Razel
 
     AIServiceWrapper::~AIServiceWrapper()
 	{
-        if (m_ChatSessionActive)
-        {
-            DestroyChatSession();
-        }
+        //if (m_ChatSessionActive)
+        //{
+        //    DestroyChatSession();
+        //}
 
         //m_AIServiceModule = py::module();
+        DestroyChatSession();
+        PythonManager::GetInstance().Shutdown();
     }
 
     bool AIServiceWrapper::Initialize()
@@ -100,16 +102,14 @@ namespace Razel
             return false;
         }
 
-        if (m_ChatSessionActive)
-        {
-            // 先销毁现有会话
-            DestroyChatSession();
-        }
+        //if (m_ChatSessionActive)
+        //{
+        //    // 先销毁现有会话
+        //    DestroyChatSession();
+        //}
 
         try
         {
-			PythonCILAcquire pythonScope;
-
             std::cout << "[AIServiceWrapper] === CREATE CHAT SESSION DEBUG ===" << std::endl;
             std::cout << "[AIServiceWrapper] Tools file: " << toolsFile << std::endl;
             
@@ -124,7 +124,7 @@ namespace Razel
             
             if (result == "success")
             {
-                m_ChatSessionActive = true;
+                //m_ChatSessionActive = true;
                 std::cout << "[AIServiceWrapper] Chat session created successfully." << std::endl;
                 std::cout << "[AIServiceWrapper] ======================================" << std::endl;
                 return true;
@@ -157,14 +157,14 @@ namespace Razel
             return result;
         }
 
-        if (!m_ChatSessionActive)
-        {
-            AIResult result;
-            result.success = false;
-            result.error_type = "Chat Session Error";
-            result.error_details = "Chat session not active";
-            return result;
-        }
+        //if (!m_ChatSessionActive)
+        //{
+        //    AIResult result;
+        //    result.success = false;
+        //    result.error_type = "Chat Session Error";
+        //    result.error_details = "Chat session not active";
+        //    return result;
+        //}
 
         try
         {
@@ -201,14 +201,14 @@ namespace Razel
             return result;
         }
 
-        if (!m_ChatSessionActive)
-        {
-            AIResult result;
-            result.success = false;
-            result.error_type = "Chat Session Error";
-            result.error_details = "Chat session not active";
-            return result;
-        }
+        //if (!m_ChatSessionActive)
+        //{
+        //    AIResult result;
+        //    result.success = false;
+        //    result.error_type = "Chat Session Error";
+        //    result.error_details = "Chat session not active";
+        //    return result;
+        //}
 
         try
         {
@@ -245,15 +245,8 @@ namespace Razel
             return false;
         }
 
-        if (!m_ChatSessionActive)
-        {
-            return true;
-        }
-
         try
         {
-			PythonCILAcquire pythonScope;
-
             std::cout << "[AIServiceWrapper] === DESTROY CHAT SESSION DEBUG ===" << std::endl;
             
 			auto result = PythonManager::GetInstance().
@@ -261,7 +254,6 @@ namespace Razel
 
             if (result == "success")
             {
-                m_ChatSessionActive = false;
                 std::cout << "[AIServiceWrapper] Chat session destroyed successfully." << std::endl;
                 std::cout << "[AIServiceWrapper] ========================================" << std::endl;
                 return true;
@@ -327,7 +319,7 @@ namespace Razel
 
     AIResult AIServiceWrapper::CallPythonFunction(const std::string& functionName, const nlohmann::json& args)
     {
-		PythonCILAcquire pythonScope;
+		PythonGILAcquire pythonScope;
 
 		AIResult result;
 		try

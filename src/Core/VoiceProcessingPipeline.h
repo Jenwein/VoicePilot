@@ -42,7 +42,7 @@ namespace Razel
     class VoiceProcessingPipeline
     {
     public:
-        VoiceProcessingPipeline();
+        VoiceProcessingPipeline(Ref<AIServiceWrapper> aiServiceWrapper);
         ~VoiceProcessingPipeline();
 
         // 同步接口（保留用于向后兼容）
@@ -63,16 +63,16 @@ namespace Razel
 
     private:
         // 内部处理方法（现在线程安全）
-        PipelineResult ProcessAudioFileInternal(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath);
+        PipelineResult ProcessAudioFileInternal(const std::string& inputPath, const std::string& outputPath);
 
         // 流程步骤
         PipelineResult PerformASR(const std::string& audioFilePath);
-        PipelineResult ProcessWithLLM(const std::string& userRequest, const std::string& toolDefsPath);
+        PipelineResult ProcessWithLLM(const std::string& userRequest);
         PipelineResult GenerateTTS(const std::string& responseText, const std::string& outputPath);
         //PipelineResult PlayAudio(const std::string& audioPath);
 
         // LLM处理的内部方法
-        bool ProcessUserRequestWithChat(const std::string& userRequest, const std::string& toolDefsPath, std::string& finalResponse);
+        bool ProcessUserRequestWithChat(const std::string& userRequest, std::string& finalResponse);
         bool ExecuteToolCalls(const nlohmann::json& functionCalls, nlohmann::json& toolResults);
         std::string ExecuteSingleTool(const std::string& toolName, const nlohmann::json& parameters);
 
@@ -84,13 +84,13 @@ namespace Razel
         bool CheckCancellation();  // 检查是否需要取消
 
     private:
-        Scope<AIServiceWrapper> m_AIServiceWrapper;
+        Ref<AIServiceWrapper> m_AIServiceWrapper;
 
-        std::unique_ptr<PythonCILRelease> m_GILRelease;
+        std::unique_ptr<PythonGILRelease> m_GILRelease;
         // 线程安全的状态管理
         std::atomic<bool> m_Cancelled;
         std::atomic<bool> m_Processing;
-        std::atomic<bool> m_ChatSessionActive;
+        //std::atomic<bool> m_ChatSessionActive;
 
         // 回调保护
         mutable std::mutex m_CallbackMutex;
