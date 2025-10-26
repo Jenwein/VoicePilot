@@ -7,18 +7,7 @@
 #include <nlohmann/json.hpp>
 namespace Razel
 {
-    // 抽象工具类
-    class ITool {
-    public:
-        virtual ~ITool() = default;
-
-		// 执行具体的工具方法, 接收参数并返回结果字符串
-        virtual std::string Execute(const nlohmann::json& args) = 0;
-
-		// 获取工具的定义，用于 LLM Function Call
-        virtual nlohmann::json GetDefinition() const = 0;
-    };
-
+	class ITool;
 	// 单例工具的注册和管理类
     class ToolRegistry {
     public:
@@ -38,6 +27,10 @@ namespace Razel
         }
 
         std::string ExecuteTool(const std::string& name, const nlohmann::json& args);
+
+		bool HasTool(const std::string& name) const {
+			return m_Tools.find(name) != m_Tools.end();
+		}
 
         //获取所有已注册工具的定义
         nlohmann::json GetAllToolDefinitions() const;

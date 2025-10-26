@@ -25,7 +25,9 @@
 			"%{IncludeDir.ImGuizmo}",
 			"%{IncludeDir.assimp}",
 			"vendor/miniaudio",
-			"vendor/nlohmann"
+			"vendor/nlohmann",
+			"vendor/python/include",
+			"vendor/pybind11/include",
 		}
 
 		links
@@ -33,13 +35,17 @@
 			"Razel",
 		}
 
+		libdirs { "vendor/python/bin" }
+		links {"python312.lib"}
+
+
 		filter "system:windows"
 			systemversion "latest"
 			
 			postbuildcommands
 			{
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll\" \"%{cfg.targetdir}\""),
-				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\"")
+				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\""),
 			}
 
 		filter "configurations:Debug"

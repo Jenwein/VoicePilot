@@ -1,0 +1,355 @@
+Added Python path: D:\dev\Razel\Razel\VoicePilot
+Added Python path: D:\dev\Razel\Razel\VoicePilot\scripts
+Core Python modules verified.
+Google GenAI module available.
+Python Manager initialized successfully.
+Python version: 3.12.10
+[AIServiceWrapper] AI Service module imported successfully.
+[AgentCore] AI Service initialized successfully.
+[AgentCore] Registering all tools...
+[ToolRegistry] Registered tool: get_current_time
+[ToolRegistry] Registered tool: write_to_file
+[ToolRegistry] Registered tool: get_known_folder_path
+[AgentCore] Tool definitions saved to Resources/prompts/toolDefsPrompt.json
+[AgentCore] Starting audio processing...
+[AgentCore] Step 1: Transcribing audio...
+[AIServiceWrapper] === ASR CALL DEBUG ===
+[AIServiceWrapper] Audio file path: Resources/audios/input.wav
+[AIServiceWrapper] ASR args: {
+  "audio_file_path": "Resources/audios/input.wav"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: transcribe_audio
+[AIServiceWrapper] Arguments: {
+  "audio_file_path": "Resources/audios/input.wav"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到音频转录请求: 文件路径=Resources/audios/input.wav
+INFO:root:正在读取音频文件...
+INFO:root:正在调用 Gemini ASR API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:转录成功: 获取当前时间，写入桌面文件
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "status": "success",
+  "transcript": "获取当前时间，写入桌面文件"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] Transcription successful: "获取当前时间，写入桌面文件"
+[AgentCore] Step 2: Processing user request with LLM...
+[AgentCore] === TOOL PROCESSING DEBUG ===
+[AgentCore] Original user request: "获取当前时间，写入桌面文件"
+[AgentCore] Conversation history length: 0
+[AgentCore] =================================
+[AgentCore] === LLM ITERATION 1 DEBUG ===
+[AgentCore] Current request: "获取当前时间，写入桌面文件"
+[AgentCore] Previous turn length: 0
+[AIServiceWrapper] === LLM CALL DEBUG ===
+[AIServiceWrapper] User request: "获取当前时间，写入桌面文件"
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Previous turn length: 0
+[AIServiceWrapper] LLM args: {
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "获取当前时间，写入桌面文件"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_request
+[AIServiceWrapper] Arguments: {
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "获取当前时间，写入桌面文件"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到理解请求: 用户请求="获取当前时间，写入桌面文件", tools_file="Resources/prompts/toolDefsPrompt.json", previous_turn="None"
+INFO:root:加载了 3 个工具定义
+INFO:root:正在调用 Gemini API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_current_time
+INFO:root:返回结果: status=continue, response_text='...', function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {},
+      "name": "get_current_time"
+    }
+  ],
+  "original_user_request": "获取当前时间，写入桌面文件",
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] LLM status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {},
+    "name": "get_current_time"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_current_time
+[ToolRegistry] Executing tool 'get_current_time' with args: {}
+[AgentCore] Tool 'get_current_time' result: Success: Current time is 2025-10-23 22:01:38
+[AgentCore] Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:38","tool_name":"get_current_time"}]
+[AgentCore] Tool execution completed, continuing conversation...
+[AgentCore] =================================
+[AgentCore] === LLM ITERATION 2 DEBUG ===
+[AgentCore] Current request: "Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:38","tool_name":"get_current_time"}]"
+[AgentCore] Previous turn length: 202
+[AIServiceWrapper] === LLM CALL DEBUG ===
+[AIServiceWrapper] User request: "Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:38","tool_name":"get_current_time"}]"
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Previous turn length: 202
+[AIServiceWrapper] Previous turn: {"function_calls":[{"args":{},"name":"get_current_time"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}
+[AIServiceWrapper] LLM args: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{},\"name\":\"get_current_time\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: Current time is 2025-10-23 22:01:38\",\"tool_name\":\"get_current_time\"}]"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_request
+[AIServiceWrapper] Arguments: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{},\"name\":\"get_current_time\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: Current time is 2025-10-23 22:01:38\",\"tool_name\":\"get_current_time\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到理解请求: 用户请求="Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:38","tool_name":"get_current_time"}]", tools_file="Resources/prompts/toolDefsPrompt.json", previous_turn="{"function_calls":[{"args":{},"name":"get_current_time"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}"
+INFO:root:加载了 3 个工具定义
+INFO:root:解析了上一轮操作结果
+INFO:root:重建对话历史，原始请求: 获取当前时间，写入桌面文件
+INFO:root:添加工具执行结果: get_current_time -> Success: Current time is 2025-10-23 22:01:38
+INFO:root:正在调用 Gemini API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_known_folder_path
+INFO:root:返回结果: status=continue, response_text='...', function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {
+        "folder_name": "desktop"
+      },
+      "name": "get_known_folder_path"
+    }
+  ],
+  "original_user_request": "获取当前时间，写入桌面文件",
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] LLM status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {
+      "folder_name": "desktop"
+    },
+    "name": "get_known_folder_path"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_known_folder_path
+[ToolRegistry] Executing tool 'get_known_folder_path' with args: {"folder_name":"desktop"}
+[AgentCore] Tool 'get_known_folder_path' result: Success: C:\Users\12731\Desktop
+[AgentCore] Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]
+[AgentCore] Tool execution completed, continuing conversation...
+[AgentCore] =================================
+[AgentCore] === LLM ITERATION 3 DEBUG ===
+[AgentCore] Current request: "Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]"
+[AgentCore] Previous turn length: 230
+[AIServiceWrapper] === LLM CALL DEBUG ===
+[AIServiceWrapper] User request: "Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]"
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Previous turn length: 230
+[AIServiceWrapper] Previous turn: {"function_calls":[{"args":{"folder_name":"desktop"},"name":"get_known_folder_path"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}
+[AIServiceWrapper] LLM args: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{\"folder_name\":\"desktop\"},\"name\":\"get_known_folder_path\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: C:\\\\Users\\\\12731\\\\Desktop\",\"tool_name\":\"get_known_folder_path\"}]"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_request
+[AIServiceWrapper] Arguments: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{\"folder_name\":\"desktop\"},\"name\":\"get_known_folder_path\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: C:\\\\Users\\\\12731\\\\Desktop\",\"tool_name\":\"get_known_folder_path\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到理解请求: 用户请求="Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]", tools_file="Resources/prompts/toolDefsPrompt.json", previous_turn="{"function_calls":[{"args":{"folder_name":"desktop"},"name":"get_known_folder_path"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}"
+INFO:root:加载了 3 个工具定义
+INFO:root:解析了上一轮操作结果
+INFO:root:重建对话历史，原始请求: 获取当前时间，写入桌面文件
+INFO:root:添加工具执行结果: get_known_folder_path -> Success: C:\Users\12731\Desktop
+INFO:root:正在调用 Gemini API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_current_time
+INFO:root:返回结果: status=continue, response_text='...', function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {},
+      "name": "get_current_time"
+    }
+  ],
+  "original_user_request": "获取当前时间，写入桌面文件",
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] LLM status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {},
+    "name": "get_current_time"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_current_time
+[ToolRegistry] Executing tool 'get_current_time' with args: {}
+[AgentCore] Tool 'get_current_time' result: Success: Current time is 2025-10-23 22:01:47
+[AgentCore] Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:47","tool_name":"get_current_time"}]
+[AgentCore] Tool execution completed, continuing conversation...
+[AgentCore] =================================
+[AgentCore] === LLM ITERATION 4 DEBUG ===
+[AgentCore] Current request: "Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:47","tool_name":"get_current_time"}]"
+[AgentCore] Previous turn length: 202
+[AIServiceWrapper] === LLM CALL DEBUG ===
+[AIServiceWrapper] User request: "Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:47","tool_name":"get_current_time"}]"
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Previous turn length: 202
+[AIServiceWrapper] Previous turn: {"function_calls":[{"args":{},"name":"get_current_time"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}
+[AIServiceWrapper] LLM args: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{},\"name\":\"get_current_time\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: Current time is 2025-10-23 22:01:47\",\"tool_name\":\"get_current_time\"}]"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_request
+[AIServiceWrapper] Arguments: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{},\"name\":\"get_current_time\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: Current time is 2025-10-23 22:01:47\",\"tool_name\":\"get_current_time\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到理解请求: 用户请求="Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:47","tool_name":"get_current_time"}]", tools_file="Resources/prompts/toolDefsPrompt.json", previous_turn="{"function_calls":[{"args":{},"name":"get_current_time"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}"
+INFO:root:加载了 3 个工具定义
+INFO:root:解析了上一轮操作结果
+INFO:root:重建对话历史，原始请求: 获取当前时间，写入桌面文件
+INFO:root:添加工具执行结果: get_current_time -> Success: Current time is 2025-10-23 22:01:47
+INFO:root:正在调用 Gemini API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_known_folder_path
+INFO:root:返回结果: status=continue, response_text='...', function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {
+        "folder_name": "desktop"
+      },
+      "name": "get_known_folder_path"
+    }
+  ],
+  "original_user_request": "获取当前时间，写入桌面文件",
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] LLM status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {
+      "folder_name": "desktop"
+    },
+    "name": "get_known_folder_path"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_known_folder_path
+[ToolRegistry] Executing tool 'get_known_folder_path' with args: {"folder_name":"desktop"}
+[AgentCore] Tool 'get_known_folder_path' result: Success: C:\Users\12731\Desktop
+[AgentCore] Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]
+[AgentCore] Tool execution completed, continuing conversation...
+[AgentCore] =================================
+[AgentCore] === LLM ITERATION 5 DEBUG ===
+[AgentCore] Current request: "Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]"
+[AgentCore] Previous turn length: 230
+[AIServiceWrapper] === LLM CALL DEBUG ===
+[AIServiceWrapper] User request: "Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]"
+[AIServiceWrapper] Tools file: Resources/prompts/toolDefsPrompt.json
+[AIServiceWrapper] Previous turn length: 230
+[AIServiceWrapper] Previous turn: {"function_calls":[{"args":{"folder_name":"desktop"},"name":"get_known_folder_path"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}
+[AIServiceWrapper] LLM args: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{\"folder_name\":\"desktop\"},\"name\":\"get_known_folder_path\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: C:\\\\Users\\\\12731\\\\Desktop\",\"tool_name\":\"get_known_folder_path\"}]"
+}
+[AIServiceWrapper] ==========================
+[AIServiceWrapper] === AI FUNCTION CALL DEBUG ===
+[AIServiceWrapper] Function: process_user_request
+[AIServiceWrapper] Arguments: {
+  "previous_turn": "{\"function_calls\":[{\"args\":{\"folder_name\":\"desktop\"},\"name\":\"get_known_folder_path\"}],\"original_user_request\":\"获取当前时间，写入桌面文件\",\"reasoning\":\"需要执行工具调用\",\"response_text\":\"\",\"status\":\"continue\"}",
+  "tools_file": "Resources/prompts/toolDefsPrompt.json",
+  "user_request": "Tool execution results: [{\"result\":\"Success: C:\\\\Users\\\\12731\\\\Desktop\",\"tool_name\":\"get_known_folder_path\"}]"
+}
+[AIServiceWrapper] ========================================
+INFO:root:收到理解请求: 用户请求="Tool execution results: [{"result":"Success: C:\\Users\\12731\\Desktop","tool_name":"get_known_folder_path"}]", tools_file="Resources/prompts/toolDefsPrompt.json", previous_turn="{"function_calls":[{"args":{"folder_name":"desktop"},"name":"get_known_folder_path"}],"original_user_request":"获取当前时间，写入桌面文件","reasoning":"需要执行工具调用","response_text":"","status":"continue"}"
+INFO:root:加载了 3 个工具定义
+INFO:root:解析了上一轮操作结果
+INFO:root:重建对话历史，原始请求: 获取当前时间，写入桌面文件
+INFO:root:添加工具执行结果: get_known_folder_path -> Success: C:\Users\12731\Desktop
+INFO:root:正在调用 Gemini API...
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:root:检测到工具调用: get_current_time
+INFO:root:返回结果: status=continue, response_text='...', function_calls=1
+[AIServiceWrapper] === AI FUNCTION RESULT DEBUG ===
+[AIServiceWrapper] Success: true
+[AIServiceWrapper] Result Data: {
+  "function_calls": [
+    {
+      "args": {},
+      "name": "get_current_time"
+    }
+  ],
+  "original_user_request": "获取当前时间，写入桌面文件",
+  "reasoning": "需要执行工具调用",
+  "response_text": "",
+  "status": "continue"
+}
+[AIServiceWrapper] ===========================================
+[AgentCore] LLM status: continue
+[AgentCore] Function calls to execute: [
+  {
+    "args": {},
+    "name": "get_current_time"
+  }
+]
+[AgentCore] Executing tool calls...
+[AgentCore] Executing tool: get_current_time
+[ToolRegistry] Executing tool 'get_current_time' with args: {}
+[AgentCore] Tool 'get_current_time' result: Success: Current time is 2025-10-23 22:01:56
+[AgentCore] Tool execution results: [{"result":"Success: Current time is 2025-10-23 22:01:56","tool_name":"get_current_time"}]
+[AgentCore] Tool execution completed, continuing conversation...
+[AgentCore] =================================
+[AgentCore] Maximum iterations reached, conversation terminated.
+[AgentCore] Failed to process user request with tools.

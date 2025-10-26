@@ -6,6 +6,7 @@
 #include "Razel/Renderer/EditorCamera.h"
 #include "Core/AgentCore.h"
 
+#include "Python/PythonManager.h"
 namespace Razel {
 
 	class EditorLayer : public Layer
@@ -76,10 +77,6 @@ namespace Razel {
 			Edit = 0, Play = 1
 		};
 		SceneState m_SceneState = SceneState::Edit;
-		
-		// Panels
-		//SceneHierarchyPanel m_SceneHierarchyPanel;
-		//ContentBrowserPanel m_ContentBrowserPanel;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
@@ -91,13 +88,14 @@ namespace Razel {
 		Entity m_VoiceAssistantEntity;
 
 		// Voice assistant model animation variables
+		int m_CurrentPixelData = -1;
 		float m_IdleRotation = 0.0f;
 		glm::vec3 m_ListeningRotation = { 0.0f, 0.0f, 0.0f };
 		glm::vec3 m_TargetListeningRotation = { -20.0f, 30.0f, 0.0f }; // 向右向下偏转的角度
 		glm::vec3 m_ProcessingRotationSpeed = { 0.0f, 150.0f, 0.0f }; // 快速转动速度
 		glm::vec3 m_SpeakingRotation = { 0.0f, 0.0f, 0.0f };
-		float m_SpeakingBobIntensity = 15.0f; // 上下摆动幅度
-		float m_SpeakingBobSpeed = 5.0f; // 摆动速度
-		float m_SpeakingBobTime = 0.0f;
+		//float m_SpeakingIntensity = 45.0f; // 上下摆动幅度
+		//float m_SpeakingSpeed = 0.24f; // 摆动速度
+		//float m_SpeakingTime = 0.0f;
 	};
 }

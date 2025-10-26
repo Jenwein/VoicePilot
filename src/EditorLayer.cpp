@@ -12,6 +12,8 @@
 
 #include <thread>
 
+
+
 namespace Razel {
 
 	extern const std::filesystem::path g_AssetPath = "assets";
@@ -42,25 +44,24 @@ namespace Razel {
 		m_EditorCamera = EditorCamera(30.0f, 1.778f, 0.1f, 1000.0f);
 
 		m_AgentCore = CreateScope<AgentCore>();
-		//m_AgentCore->Init();
 
-		// TODO:创建语音助手的3D模型实体
-		//m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
-		// ModelComponent modelComp;
-		// modelComp.FilePath = "assets/models/bunny/bunny.obj";
-		// modelComp.FlipUVs = false;
-		// modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
-		// auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
-		// 
-		// auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
-		// //transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
-		// transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
-		// transformComponent.Scale = { 3.0f, 3.0f, 3.0f };
+		m_VoiceAssistantEntity = m_ActiveScene->CreateEntity("VoiceAssistant");
+		ModelComponent modelComp;
+		modelComp.FilePath = "assets/models/bunny/bunny.obj";
+		modelComp.FlipUVs = false;
+		modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
+		auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
+		
+		auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
+		//transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
+		transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
+		transformComponent.Scale = { 3.0f, 3.0f, 3.0f };
 	}
 
 	void EditorLayer::OnDetach()
 	{
 		RZ_PROFILE_FUNCTION();
+		m_AgentCore.reset();
 	}
 
 	void EditorLayer::OnUpdate(Timestep ts)
@@ -69,8 +70,7 @@ namespace Razel {
 
 		m_AgentCore->OnUpdate();
 
-		//TODO:启用语音助手3D模型的更新,当前的py调用是同步阻塞的,所以更新无法进行,之后考虑异步的进行py的调用与结果获取
-		//UpdateVoiceAssistantModel(ts);
+		UpdateVoiceAssistantModel(ts);
 
 		// 当帧缓冲大小与视口大小不同时,且视口大小不为0
 		// 因为当前的流程中,先OnUpdate,渲染,填充帧缓冲,解绑,然后在OnImGuiRenderer中去调整视口大小,此时会导致纹理为空,所以有一个黑色的闪烁
@@ -135,6 +135,7 @@ namespace Razel {
 		{
 			int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
 			m_HoveredEntity = pixelData == -1 ? Entity() : Entity((entt::entity)pixelData, m_ActiveScene.get());
+			m_CurrentPixelData = pixelData;
 			//RZ_CORE_WARN("Pixel data = {0}", pixelData);
 		}
 
@@ -255,19 +256,18 @@ namespace Razel {
 		ImGui::Begin("TODO");
 		if (ImGui::Button("test_ExecPython"))
 		{
-			m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			//m_AgentCore->ProcessAudio("Resources/audios/input.wav");
+			m_AgentCore->ProcessVoiceRequestAsync();
 		}
 		
 		//TODO:
 		ImGui::End();
 
-		// 后期来的及可以添加悬浮球的UI，当主界面最小化后显示悬浮球
+		// TODO: 添加悬浮球的UI，当主界面最小化后显示悬浮球
 		//ImGui::Begin("悬浮球");
 		////TODO:作为一个悬浮球
 		//ImGui::End();
 
-
-		// TODO:ViewPort显示一个3D模型作为语言助手的形象，后期如果来的及可以通过控制模型的变化来表现当前AI助手的状态
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
@@ -345,21 +345,62 @@ namespace Razel {
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
-		// 例如, 我们用 'R' 键来开始/停止录音
-		if (e.GetKeyCode() == Key::R && e.GetRepeatCount() == 0) 
+		// 我们只处理单次按键事件，忽略长按产生的重复事件
+		if (e.GetRepeatCount() > 0)
 		{
-			m_AgentCore->ToggleRecordingAndProcess();
-			return true; // 事件已处理
+			return false;
 		}
-		return false;
+
+		// 处理R键的录音切换功能
+		if (e.GetKeyCode() == Key::R)
+		{
+			AgentState currentState = m_AgentCore->GetCurrentState();
+
+			if (currentState == AgentState::Idle)
+			{
+				std::cout << "[EditorLayer] R key pressed. Starting listening..." << std::endl;
+				m_AgentCore->StartListening();
+				return true; // 事件已处理
+			}
+
+			if (currentState == AgentState::Listening)
+			{
+				std::cout << "[EditorLayer] R key pressed again. Stopping listening..." << std::endl;
+				m_AgentCore->StopListening();
+				return true; // 事件已处理
+			}
+
+			// 如果当前状态是 Processing 或 Speaking，按 R 键不做任何事
+			std::cout << "[EditorLayer] R key pressed, but Agent is busy. Current state: "
+				<< static_cast<int>(currentState) << std::endl;
+		}
+
+		return false; // 其他按键事件未处理	
 	}
 
 	bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent& e)
 	{
-		if (e.GetMouseButton() == Mouse::ButtonLeft)
+		if (e.GetMouseButton() == Mouse::ButtonLeft && m_ViewportHovered)
 		{
+			if (m_HoveredEntity && m_CurrentPixelData != -1)	//仅仅会有一个模型
+			{
+				if (m_AgentCore->GetCurrentState() == AgentState::Idle)
+				{
+					std::cout << "[EditorLayer] Model clicked. Starting listening..." << std::endl;
+					m_AgentCore->StartListening();
+					return true;
+				}
+
+				if (m_AgentCore->GetCurrentState() == AgentState::Listening)
+				{
+					std::cout << "[EditorLayer] Model clicked again. Stopping listening..." << std::endl;
+					m_AgentCore->StopListening();
+					return true;
+
+				}
+			}
 		}
-		return false;
+		return false; // 事件未处理
 	}
 
 	void EditorLayer::OnOverlayRender()
@@ -471,44 +512,42 @@ namespace Razel {
 		{
 		case AgentState::Idle:
 		{
-			// 水平缓慢转动表示空闲状态
-			m_IdleRotation += ts * 5.0f; // 每秒转动20度
+			m_IdleRotation += ts * 5.0f;
+			m_IdleRotation = m_IdleRotation > 360 ? 0 : m_IdleRotation;
 			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
 			break;
 		}
 		case AgentState::Listening:
 		{
-			// 从当前状态变换到向右向下偏转角度
-			// 使用插值使变换更平滑
+			// 侧耳倾听姿态：绕Y轴转45°，Z轴转45°
+			glm::vec3 listeningRotation = glm::vec3(0.0f, 45.0f, 45.0f);
 			glm::vec3 currentRotation = transformComponent.Rotation;
-			glm::vec3 targetRotation = m_TargetListeningRotation;
 
-			// 插值计算
-			glm::vec3 delta = targetRotation - currentRotation;
-			float interpolationSpeed = 5.0f; // 插值速度
-
-			if (glm::length(delta) > 0.1f) {
-				transformComponent.Rotation += delta * ts * interpolationSpeed;
-			}
-			else {
-				transformComponent.Rotation = targetRotation;
-			}
+			transformComponent.Rotation = listeningRotation;
 			break;
 		}
 		case AgentState::Processing:
 		{
 			// 快速转动
 			m_IdleRotation += ts * 20.0f;
+			m_IdleRotation = m_IdleRotation > 360 ? 0 : m_IdleRotation;
 			transformComponent.Rotation = glm::vec3(0.0f, m_IdleRotation, 0.0f);
 			break;
 		}
 		case AgentState::Speaking:
 		{
-			// 沿着x轴一上一下旋转
-			m_SpeakingBobTime += ts * m_SpeakingBobSpeed;
-			float bobAngle = sin(m_SpeakingBobTime) * m_SpeakingBobIntensity;
-			transformComponent.Rotation = glm::vec3(bobAngle, 0.0f, 0.0f);
-			break;
+			//if (m_RotatingUp)
+			//{
+			//	m_SpeakingRotation += m_SpeakingSpeed;
+			//	if (m_SpeakingRotation >= 45.0f)
+			//		m_RotatingUp = false;
+			//}
+			//else
+			//{
+			//	m_SpeakingRotation -= m_SpeakingSpeed;
+			//	if (m_SpeakingRotation <= -45.0f)
+			//		m_RotatingUp = true;
+			//}
 		}
 		}
 	}

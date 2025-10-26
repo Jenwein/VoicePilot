@@ -1,0 +1,379 @@
+#include "VoiceProcessingPipeline.h"
+#include "../Tools/ToolRegistry.h"
+#include "../Tools/Tools.h"
+#include <iostream>
+#include <thread>
+
+namespace Razel
+{
+    VoiceProcessingPipeline::VoiceProcessingPipeline(Ref<AIServiceWrapper> aiServiceWrapper)
+        :m_AIServiceWrapper(aiServiceWrapper)
+        ,m_Cancelled(false)
+        , m_Processing(false)
+    {
+        RegisterAllTools();
+    }
+
+    VoiceProcessingPipeline::~VoiceProcessingPipeline()
+    {
+        // 取消处理并等待完成
+        Cancel();
+    }
+
+    //PipelineResult VoiceProcessingPipeline::ProcessAudioFile(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
+    //{
+    //    // 同步版本，直接调用内部方法
+    //    return ProcessAudioFileInternal(inputPath, outputPath, toolDefsPath);
+    //}
+
+    std::future<PipelineResult> VoiceProcessingPipeline::ProcessAudioFileAsync(const std::string& inputPath, const std::string& outputPath, const std::string& toolDefsPath)
+    {
+        // 检查是否已在处理中
+        if (m_Processing.load())
+        {
+            std::promise<PipelineResult> promise;
+            promise.set_value(PipelineResult::Error("Pipeline is already processing another request"));
+            return promise.get_future();
+        }
+
+        // 使用std::async启动异步任务
+        return std::async(std::launch::async, [this, inputPath, outputPath]() {
+            return ProcessAudioFileInternal(inputPath, outputPath);
+        });
+    }
+
+    void VoiceProcessingPipeline::SetStageCallback(std::function<void(PipelineStage, const std::string&)> callback)
+    {
+        std::lock_guard<std::mutex> lock(m_CallbackMutex);
+        m_StageCallback = callback;
+    }
+
+    void VoiceProcessingPipeline::Cancel()
+    {
+        std::cout << "[Pipeline] canceling pipeline processing..." << std::endl;
+        m_Cancelled.store(true);
+    }
+
+    PipelineResult VoiceProcessingPipeline::ProcessAudioFileInternal(const std::string& inputPath, const std::string& outputPath)
+    {
+        std::cout << "[Pipeline] Starting voice processing pipeline..." << std::endl;
+        
+        // 设置处理状态
+        m_Processing.store(true);
+        m_Cancelled.store(false);
+
+        // RAII确保处理完成后重置状态
+        struct ProcessingGuard {
+            std::atomic<bool>& processing;
+            ProcessingGuard(std::atomic<bool>& p) : processing(p) {}
+            ~ProcessingGuard() { processing.store(false); }
+        } guard(m_Processing);
+
+        try
+        {
+            // 步骤1: ASR
+            auto asrResult = PerformASR(inputPath);
+            if (!asrResult.success || CheckCancellation())
+            {
+                return asrResult.success ? PipelineResult::Error("Processing cancelled") : asrResult;
+            }
+
+            // 步骤2: LLM处理
+            auto llmResult = ProcessWithLLM(asrResult.responseText);
+            if (!llmResult.success || CheckCancellation())
+            {
+                return llmResult.success ? PipelineResult::Error("Processing cancelled") : llmResult;
+            }
+
+            // 步骤3: TTS生成
+            auto ttsResult = GenerateTTS(llmResult.responseText, outputPath);
+            if (!ttsResult.success || CheckCancellation())
+            {
+                return ttsResult.success ? PipelineResult::Error("Processing cancelled") : ttsResult;
+            }
+
+            std::cout << "[Pipeline] Voice processing pipeline completed successfully." << std::endl;
+            return PipelineResult::Success(llmResult.responseText);
+        }
+        catch (const std::exception& e)
+        {
+            std::string errorMsg = "Pipeline processing failed: " + std::string(e.what());
+            std::cerr << "[Pipeline] " << errorMsg << std::endl;
+            return PipelineResult::Error(errorMsg);
+        }
+    }
+
+    PipelineResult VoiceProcessingPipeline::PerformASR(const std::string& audioFilePath)
+    {
+        NotifyStage(PipelineStage::ASR, "Starting speech recognition...");
+        
+        if (!m_AIServiceWrapper->IsInitialized())
+        {
+            return PipelineResult::Error("AI Service not initialized");
+        }
+
+        AIResult asrResult = m_AIServiceWrapper->TranscribeAudio(audioFilePath);
+        if (!asrResult.IsSuccess())
+        {
+            return PipelineResult::Error("ASR failed: " + asrResult.GetErrorMessage());
+        }
+
+        std::string userRequest;
+        if (asrResult.data.contains("transcript"))
+        {
+            userRequest = asrResult.data["transcript"].get<std::string>();
+            std::cout << "[Pipeline] ASR successful: \"" << userRequest << "\"" << std::endl;
+        }
+        else
+        {
+            return PipelineResult::Error("ASR result does not contain transcript data");
+        }
+
+        if (userRequest.empty() || userRequest.length() < 2)
+        {
+            return PipelineResult::Error("Transcription result is too short or empty");
+        }
+
+        NotifyStage(PipelineStage::ASR, "Speech recognition completed: " + userRequest);
+        return PipelineResult::Success(userRequest);
+    }
+
+    PipelineResult VoiceProcessingPipeline::ProcessWithLLM(const std::string& userRequest)
+    {
+        NotifyStage(PipelineStage::LLM, "Starting LLM processing...");
+        
+        std::string finalResponse;
+        if (!ProcessUserRequestWithChat(userRequest, finalResponse))
+        {
+            return PipelineResult::Error("Failed to process user request with LLM");
+        }
+
+        NotifyStage(PipelineStage::LLM, "LLM processing completed");
+        return PipelineResult::Success(finalResponse);
+    }
+
+    PipelineResult VoiceProcessingPipeline::GenerateTTS(const std::string& responseText, const std::string& outputPath)
+    {
+        NotifyStage(PipelineStage::TTS, "Starting text-to-speech synthesis...");
+
+        if (responseText.empty())
+        {
+            return PipelineResult::Error("Response text is empty");
+        }
+
+        AIResult ttsResult = m_AIServiceWrapper->SynthesizeSpeech(responseText, outputPath);
+
+        if (!ttsResult.IsSuccess())
+        {
+            return PipelineResult::Error("TTS failed: " + ttsResult.GetErrorMessage());
+        }
+
+        NotifyStage(PipelineStage::TTS, "Text-to-speech synthesis completed");
+        return PipelineResult::Success(responseText);
+    }
+
+    bool VoiceProcessingPipeline::ProcessUserRequestWithChat(const std::string& userRequest, std::string& finalResponse)
+    {
+        const int MAX_ITERATIONS = 10;
+        int iteration = 0;
+
+        std::cout << "[Pipeline] === CHAT PROCESSING ===" << std::endl;
+        std::cout << "[Pipeline] User request: \"" << userRequest << "\"" << std::endl;
+
+        // 1. 发送用户消息
+        AIResult chatResult = m_AIServiceWrapper->ProcessUserMessage(userRequest);
+        
+        if (!chatResult.IsSuccess())
+        {
+            std::cerr << "[Pipeline] Failed to process user message: " << chatResult.GetErrorMessage() << std::endl;
+            return false;
+        }
+
+        // 2. 处理Chat响应循环
+        while (iteration < MAX_ITERATIONS && !CheckCancellation())
+        {
+            iteration++;
+            
+            std::string status;
+            if (chatResult.data.contains("status"))
+            {
+                status = chatResult.data["status"].get<std::string>();
+            }
+
+            if (status == "finished")
+            {
+                if (chatResult.data.contains("response_text"))
+                {
+                    finalResponse = chatResult.data["response_text"].get<std::string>();
+                    std::cout << "[Pipeline] Final response: \"" << finalResponse << "\"" << std::endl;
+                 
+                    return true;
+                }
+                else
+                {
+                    std::cerr << "[Pipeline] Chat finished but no response text found." << std::endl;
+                    return false;
+                }
+            }
+            else if (status == "continue")
+            {
+                if (chatResult.data.contains("function_calls"))
+                {
+                    NotifyStage(PipelineStage::ToolExecution, "Executing tools...");
+                    
+                    nlohmann::json toolResults;
+                    if (!ExecuteToolCalls(chatResult.data["function_calls"], toolResults))
+                    {
+                        std::cerr << "[Pipeline] Tool execution failed." << std::endl;
+                        return false;
+                    }
+
+                    // 发送工具结果
+                    chatResult = m_AIServiceWrapper->SendToolResults(toolResults);
+                    if (!chatResult.IsSuccess())
+                    {
+                        std::cerr << "[Pipeline] Failed to send tool results: " << chatResult.GetErrorMessage() << std::endl;
+                        return false;
+                    }
+                }
+                else
+                {
+                    std::cerr << "[Pipeline] Chat status is 'continue' but no function calls found." << std::endl;
+                    return false;
+                }
+            }
+            else
+            {
+                std::cerr << "[Pipeline] Unknown Chat status: " << status << std::endl;
+                return false;
+            }
+        }
+
+        if (CheckCancellation())
+        {
+            std::cout << "[Pipeline] Chat processing cancelled by user." << std::endl;
+            return false;
+        }
+
+        std::cerr << "[Pipeline] Maximum Chat iterations reached." << std::endl;
+        return false;
+    }
+
+    bool VoiceProcessingPipeline::ExecuteToolCalls(const nlohmann::json& functionCalls, nlohmann::json& toolResults)
+    {
+        toolResults = nlohmann::json::array();
+
+        try
+        {
+            for (const auto& call : functionCalls)
+            {
+                if (CheckCancellation()) return false;
+
+                if (!call.contains("name") || !call.contains("args"))
+                {
+                    std::cerr << "[Pipeline] Invalid function call format." << std::endl;
+                    continue;
+                }
+
+                std::string toolName = call["name"].get<std::string>();
+                nlohmann::json parameters = call["args"];
+
+                std::string result = ExecuteSingleTool(toolName, parameters);
+
+                nlohmann::json callResult;
+                callResult["name"] = toolName;
+                callResult["result"] = result;
+                toolResults.push_back(callResult);
+            }
+
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[Pipeline] Tool execution error: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    std::string VoiceProcessingPipeline::ExecuteSingleTool(const std::string& toolName, const nlohmann::json& parameters)
+    {
+        try
+        {
+            auto& registry = ToolRegistry::GetInstance();
+
+            if (!registry.HasTool(toolName))
+            {
+                return "Error: Tool '" + toolName + "' not found.";
+            }
+
+            return registry.ExecuteTool(toolName, parameters);
+        }
+        catch (const std::exception& e)
+        {
+            return "Error executing tool '" + toolName + "': " + std::string(e.what());
+        }
+    }
+
+    void VoiceProcessingPipeline::RegisterAllTools()
+    {
+        std::cout << "[Pipeline] Registering all tools..." << std::endl;
+        auto& registry = ToolRegistry::GetInstance();
+
+		//=======System Tools=========
+		registry.RegisterTool<GetCurrentTimeTool>("get_current_time");
+		registry.RegisterTool<GetSystemInfoTool>("get_system_info");
+		registry.RegisterTool<GetNetworkStatusTool>("get_network_status");
+		registry.RegisterTool<GetBatteryStatusTool>("get_battery_status");
+
+		//=======File Tools=========
+		registry.RegisterTool<WriteFileTool>("write_to_file");
+		registry.RegisterTool<ReadFileTool>("read_file");
+		registry.RegisterTool<CreateDirectoryTool>("create_directory");
+		registry.RegisterTool<CopyFileTool>("copy_file");
+		registry.RegisterTool<GetKnownFolderPathTool>("get_known_folder_path");
+		registry.RegisterTool<ListDirectoryTool>("list_directory");
+
+		//=======App Tools=========
+		registry.RegisterTool<GetAvailableApplicationsTool>("get_available_applications");
+		registry.RegisterTool<OpenApplicationTool>("open_application");
+		registry.RegisterTool<SmartOpenApplicationTool>("smart_open_application");
+		registry.RegisterTool<CloseProcessTool>("close_process");
+		registry.RegisterTool<SmartCloseApplicationTool>("smart_close_application");
+
+		//=======Web Tools=========
+		registry.RegisterTool<OpenURLTool>("open_url");
+		registry.RegisterTool<WebSearchTool>("web_search");
+		registry.RegisterTool<FetchWebpageContentTool>("fetch_webpage_content");
+
+		//=======Window Management Tools========
+		registry.RegisterTool<GetActiveWindowTool>("get_active_window");
+		registry.RegisterTool<SwitchWindowTool>("switch_window");
+		registry.RegisterTool<SetWindowStateTool>("set_window_state");
+
+		//=======Multimedia Tools========
+		registry.RegisterTool<MediaControlTool>("media_control");
+
+		//=======Input Simulation Tools========
+		registry.RegisterTool<TypeTextTool>("type_text");
+		registry.RegisterTool<PressKeysTool>("press_keys");
+		registry.RegisterTool<MouseMoveTool>("move_mouse");
+		registry.RegisterTool<MouseClickTool>("mouse_click");
+    }
+
+    void VoiceProcessingPipeline::NotifyStage(PipelineStage stage, const std::string& message)
+    {
+        std::cout << "[Pipeline] " << message << std::endl;
+        
+        // 线程安全的回调调用
+        std::lock_guard<std::mutex> lock(m_CallbackMutex);
+        if (m_StageCallback)
+        {
+            m_StageCallback(stage, message);
+        }
+    }
+
+    bool VoiceProcessingPipeline::CheckCancellation()
+    {
+        return m_Cancelled.load();
+    }
+}

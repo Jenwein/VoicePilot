@@ -16,3 +16,21 @@
 2025-10-22 07:54:38,931 - INFO - 正在向 Gemini TTS API 发送请求...
 2025-10-22 07:54:38,931 - INFO - AFC is enabled with max remote calls: 10.
 2025-10-22 07:54:44,899 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent "HTTP/1.1 200 OK"
+2025-10-22 21:17:00,052 - INFO - 开始处理理解任务: 文件路径="Resources/audios/input.wav", 工具定义文件="Resources/prompts/toolDefsPrompt.json"
+2025-10-22 21:17:00,053 - INFO - 正在读取工具定义文件...
+2025-10-22 21:17:00,053 - INFO - 工具定义文件读取成功
+2025-10-22 21:17:00,053 - INFO - 正在上传音频文件...
+2025-10-22 21:17:01,220 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files "HTTP/1.1 200 OK"
+2025-10-22 21:17:02,961 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=AAwnv3JSHnc6pXhAaMPzsQVC-Rfi6dCPpipjrk9eSinZBG-xSSMY3AyGXlT_qmzW2V7Twl6jJBUQxG5AfZqHOnwB9ARFUoh4gKeVEMY2ezdgUGs&upload_protocol=resumable "HTTP/1.1 200 OK"
+2025-10-22 21:17:02,962 - INFO - 音频文件上传成功: files/is3ndbxn1bxy
+2025-10-22 21:17:02,962 - INFO - 正在向 Gemini API 发送请求...
+2025-10-22 21:17:02,963 - INFO - AFC is enabled with max remote calls: 10.
+2025-10-22 21:17:05,441 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-10-22 21:17:07,552 - INFO - 收到生成响应任务: 执行结果="Success: Current time is 2025-10-22 21:17:05"
+2025-10-22 21:17:07,553 - INFO - 正在向 Gemini API 发送请求以生成自然语言回复...
+2025-10-22 21:17:07,553 - INFO - AFC is enabled with max remote calls: 10.
+2025-10-22 21:17:13,192 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2025-10-22 21:17:15,314 - INFO - 收到TTS任务: 文本="现在是2025年10月22日晚上9点17分5秒。", 输出到="Resources/audios/output.wav"
+2025-10-22 21:17:15,314 - INFO - 正在向 Gemini TTS API 发送请求...
+2025-10-22 21:17:15,314 - INFO - AFC is enabled with max remote calls: 10.
+2025-10-22 21:17:23,294 - INFO - HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent "HTTP/1.1 200 OK"
