@@ -1,0 +1,13 @@
+项目采用分层架构，从上至下可以分为：
+
+应用与UI层 (Application & UI Layer)：
+作为应用的入口和用户交互界面，基于 Razel 引擎构建，使用 ImGui 渲染图形界面。
+
+核心业务逻辑层 (Core Business Logic Layer)：
+包含了智能助理的核心大脑 AgentCore，负责状态管理和协调下层服务。
+
+语音处理流水线层 (Voice Processing Pipeline Layer)：
+VoiceProcessingPipeline 负责将语音识别 (ASR)、大语言模型 (LLM) 处理和语音合成 (TTS) 串联起来，形成一个完整的处理流。
+
+底层服务层 (Underlying Services Layer)：
+提供项目所需的各项基础服务，包括音频管理、Python AI 服务封装和工具系统。
