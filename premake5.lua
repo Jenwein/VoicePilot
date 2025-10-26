@@ -1,64 +1,56 @@
-	project "VoicePilot"
-		kind "ConsoleApp"
-		language"C++"
-		cppdialect "C++17"
-		staticruntime "on"
+include "./vendor/premake/premake_customization/solution_items.lua"
+workspace "VoicePilot"
+	architecture "x86_64"
+	startproject "VoicePilot"
+	--指定工作区或项目的构建配置集，例如“调试”和“发布”
+	configurations
+	{
+		"Debug",
+		"Release",
+		"Dist"
+	}
 
-		targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-		objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	solution_items
+	{
+		".editorconfig"
+	}
 
-		files
-		{
-			"vendor/miniaudio/**.h",
-			"vendor/miniaudio/**.cpp",
-			"src/**.h",
-			"src/**.cpp"
-		}
+	flags
+	{
+		"MultiProcessorCompile"
+	}
 
-		includedirs
-		{
-			"%{wks.location}/Razel/vendor/spdlog/include",
-			"%{wks.location}/Razel/src",
-			"%{wks.location}/Razel/vendor",
-			"%{IncludeDir.glm}",
-			"%{IncludeDir.entt}",
-			"%{IncludeDir.ImGuizmo}",
-			"%{IncludeDir.assimp}",
-			"vendor/miniaudio",
-			"vendor/nlohmann",
-			"vendor/python/include",
-			"vendor/pybind11/include",
-		}
+	--输出位置	eg: build-Windows-x64
+	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+	
+	-- Include directories relative to root folder (solution directory)
+	IncludeDir = {}
+	IncludeDir["GLFW"] = "%{wks.location}/Razel/vendor/GLFW/include"
+	IncludeDir["Glad"] = "%{wks.location}/Razel/vendor/Glad/include"
+	IncludeDir["ImGui"] = "%{wks.location}/Razel/vendor/imgui"
+	IncludeDir["glm"] = "%{wks.location}/Razel/vendor/glm"
+	IncludeDir["stb_image"] = "%{wks.location}/Razel/vendor/stb_image"
+	IncludeDir["entt"] = "%{wks.location}/Razel/vendor/entt/include"
+	IncludeDir["yaml_cpp"] = "%{wks.location}/Razel/vendor/yaml-cpp/include"
+	IncludeDir["ImGuizmo"] = "%{wks.location}/Razel/vendor/ImGuizmo"
+	IncludeDir["Box2D"] = "%{wks.location}/Razel/vendor/Box2D/include"
+	IncludeDir["assimp"] = "%{wks.location}/Razel/vendor/assimp/include"
+	filter "action:vs*"
+        buildoptions { "/utf-8" , "/wd4828" }
+    filter {}
+	externalwarnings "Off"
+	--查找并执行另一个脚本文件，也就是查找路径下的premake文件并将内容拷贝到此处(如果之前尚未运行过)
+group "Dependencies"
+	include "vendor/premake"
+	include "Razel/vendor/Box2D"
+	include "Razel/vendor/GLFW"
+	include "Razel/vendor/Glad"
+	include "Razel/vendor/imgui"
+	include "Razel/vendor/yaml-cpp"
 
-		links
-		{
-			"Razel",
-		}
+group ""
 
-		libdirs { "vendor/python/bin" }
-		links {"python312.lib"}
+include "Razel"
+include "VoicePilot"
 
 
-		filter "system:windows"
-			systemversion "latest"
-			
-			postbuildcommands
-			{
-				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll\" \"%{cfg.targetdir}\""),
-				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\""),
-			}
-
-		filter "configurations:Debug"
-			defines "RZ_DEBUG"
-			runtime "Debug"
-			symbols "on"
-
-		filter "configurations:Release"
-			defines "RZ_RELEASE"
-			runtime "Release"
-			optimize "on"
-
-		filter "configurations:Dist"
-			defines "RZ_DIST"
-			runtime "Release"
-			optimize "on"

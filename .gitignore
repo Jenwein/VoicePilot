@@ -1,14 +1,19 @@
-﻿################################################################################
-# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
-################################################################################
+# Directories
+.vs/
+bin/
+bin-int/
 
-/VoicePilot.vcxproj
-/VoicePilot.vcxproj.filters
-/Razel.log
-/scripts/__pycache__/ai_service.cpython-312.pyc
-/Resources/audios/input1.wav
-/Resources/audios/output.wav
-/Resources/prompts/toolDefsPrompt.json
-/.vs/VoicePilot
-/VoicePilot.sln
-*.wav
+# Binaries
+**/bin/
+!vendor/premake/bin/
+bin-int/
+
+# Razel files
+@@ -11,4 +11,4 @@ bin-int/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+SandBox/RazelProfile*
+/Razel-Editor/Razel.log
+/scripts/__pycache__

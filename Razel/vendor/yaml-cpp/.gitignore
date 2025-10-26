@@ -1,0 +1,12 @@
+build/
+/tags
+/bazel-*
+
+## Razel
+bin/
+bin-int
+
+## Visual Studio files and folder
+.vs/
+*.sln
+*.vcxproj*

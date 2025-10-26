@@ -1,0 +1,448 @@
+#include "rzpch.h"
+#include "SceneSerializer.h"
+
+#include "Entity.h"
+#include "Components.h"
+
+#include <glm/glm.hpp>
+#include <yaml-cpp/yaml.h>
+
+namespace YAML 
+{
+	template<>
+	struct convert<glm::vec2>
+	{
+		// 编码 rhs-将被编码的对象
+		static Node encode(const glm::vec2& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+
+		// 解码
+		static bool decode(const Node& node, glm::vec2& rhs)
+		{
+			// 如果节点不是序列，或者序列的大小不是 2 
+			if (!node.IsSequence() || node.size() != 2)
+			{
+				return false;
+			}
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			return true;
+		}
+	};
+
+
+	// 对glm::vec3 数据的处理需要编码和解码
+	template<>
+	struct convert<glm::vec3>
+	{
+		// 编码 rhs-将被编码的对象
+		static Node encode(const glm::vec3& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+
+		// 解码
+		static bool decode(const Node& node, glm::vec3& rhs)
+		{
+			// 如果节点不是序列，或者序列的大小不是 3 
+			if (!node.IsSequence()||node.size()!=3)
+			{
+				return false;
+			}
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec4>
+	{
+		// 编码
+		static Node encode(const glm::vec4& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.push_back(rhs.w);
+			node.SetStyle(EmitterStyle::Flow);
+			return node;
+		}
+		// 解码
+		static bool decode(const Node& node, glm::vec4& rhs)
+		{
+			// 如果节点不是序列，或者序列的大小不是 4
+			if (!node.IsSequence() || node.size() != 4)
+			{
+				return false;
+			}
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			rhs.w = node[3].as<float>();
+			return true;
+		}
+	};
+}
+
+namespace Razel
+{
+	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec2& v)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << v.x << v.y << YAML::EndSeq;
+		return out;
+	}
+	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+		return out;
+	}
+	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec4& v)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << v.x << v.y << v.z <<v.w<< YAML::EndSeq;
+		return out;
+	}
+
+	static std::string RigidBody2DBodyTypeToString(Rigidbody2DComponent::BodyType bodyType)
+	{
+		switch (bodyType)
+		{
+			case Razel::Rigidbody2DComponent::BodyType::Static:		return "Static";
+			case Razel::Rigidbody2DComponent::BodyType::Dynamic:	return "Dynamic";
+			case Razel::Rigidbody2DComponent::BodyType::Kinematic:	return "Kinematic";
+			default:
+				break;
+		}
+		RZ_CORE_ASSERT(false, "Unknown body type");
+	}
+	static Rigidbody2DComponent::BodyType RigidBody2DBodyTypeFromString(const std::string& bodyTypeString)
+	{
+		if (bodyTypeString == "Static") return Razel::Rigidbody2DComponent::BodyType::Static;
+		if (bodyTypeString == "Dynamic") return Razel::Rigidbody2DComponent::BodyType::Dynamic;
+		if (bodyTypeString == "Kinematic") return Razel::Rigidbody2DComponent::BodyType::Kinematic;
+		
+		RZ_CORE_ASSERT(false, "Unknown body type");
+		return Rigidbody2DComponent::BodyType::Static;
+	}
+
+	SceneSerializer::SceneSerializer(const Ref<Scene>& scene)
+		:m_Scene(scene)
+	{
+	}
+
+	static void SerializerEntity(YAML::Emitter& out, Entity entity)
+	{
+		RZ_CORE_ASSERT(entity.HasComponent<IDComponent>());
+
+		out << YAML::BeginMap;	// Entity
+		out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();	//TODO
+		
+
+		if (entity.HasComponent<TagComponent>())
+		{
+			out << YAML::Key << "TagComponent";
+			out << YAML::BeginMap;	// TagComponent
+
+			auto& tag = entity.GetComponent<TagComponent>().Tag;
+			out << YAML::Key << "Tag" << YAML::Value << tag;
+
+			out << YAML::EndMap;	// TagComponent	
+		}
+		if (entity.HasComponent<TransformComponent>())
+		{
+			out << YAML::Key << "TransformComponent";
+			out << YAML::BeginMap; // TransformComponent
+
+			auto& tc = entity.GetComponent<TransformComponent>();
+			out << YAML::Key << "Translation" << YAML::Value << tc.Translation;
+			out << YAML::Key << "Rotation" << YAML::Value << tc.Rotation;
+			out << YAML::Key << "Scale" << YAML::Value << tc.Scale;
+
+			out << YAML::EndMap; // TransformComponent
+		}
+
+		if (entity.HasComponent<CameraComponent>())
+		{
+			out << YAML::Key << "CameraComponent";
+			out << YAML::BeginMap; // CameraComponent
+
+			auto& cameraComponent = entity.GetComponent<CameraComponent>();
+			auto& camera = cameraComponent.Camera;
+
+			out << YAML::Key << "Camera" << YAML::Value;
+			out << YAML::BeginMap; // Camera
+			out << YAML::Key << "ProjectionType" << YAML::Value << (int)camera.GetProjectionType();
+			out << YAML::Key << "PerspectiveFOV" << YAML::Value << camera.GetPerspectiveVerticalFOV();
+			out << YAML::Key << "PerspectiveNear" << YAML::Value << camera.GetPerspectiveNearClip();
+			out << YAML::Key << "PerspectiveFar" << YAML::Value << camera.GetPerspectiveFarClip();
+			out << YAML::Key << "OrthographicSize" << YAML::Value << camera.GetOrthographicSize();
+			out << YAML::Key << "OrthographicNear" << YAML::Value << camera.GetOrthographicNearClip();
+			out << YAML::Key << "OrthographicFar" << YAML::Value << camera.GetOrthographicFarClip();
+			out << YAML::EndMap; // Camera
+
+			out << YAML::Key << "Primary" << YAML::Value << cameraComponent.Primary;
+			out << YAML::Key << "FixedAspectRatio" << YAML::Value << cameraComponent.FixedAspectRatio;
+
+			out << YAML::EndMap; // CameraComponent
+		}
+		if (entity.HasComponent<SpriteRendererComponent>())
+		{
+			out << YAML::Key << "SpriteRendererComponent";
+			out << YAML::BeginMap; // SpriteRendererComponent
+
+			auto& spriteRendererComponent = entity.GetComponent<SpriteRendererComponent>();
+			out<<YAML::Key<<"Color" << YAML::Value << spriteRendererComponent.Color;
+
+			out << YAML::EndMap; // SpriteRendererComponent
+		}
+		if (entity.HasComponent<CircleRendererComponent>())
+		{
+			out << YAML::Key << "CircleRendererComponent";
+			out << YAML::BeginMap; // CircleRendererComponent
+
+			auto& circleRendererComponent = entity.GetComponent<CircleRendererComponent>();
+			out << YAML::Key << "Color" << YAML::Value << circleRendererComponent.Color;
+			out << YAML::Key << "Thickness" << YAML::Value << circleRendererComponent.Thickness;
+			out << YAML::Key << "Fade" << YAML::Value << circleRendererComponent.Fade;
+
+			out << YAML::EndMap; // CircleRendererComponent
+		}
+		if (entity.HasComponent<Rigidbody2DComponent>())
+		{
+			out << YAML::Key << "Rigidbody2DComponent";
+			out << YAML::BeginMap; // Rigidbody2DComponent
+
+			auto& rb2dComponent = entity.GetComponent<Rigidbody2DComponent>();
+			out << YAML::Key << "BodyType" << YAML::Value << RigidBody2DBodyTypeToString(rb2dComponent.Type);
+			out << YAML::Key << "FixedRotation" << YAML::Value << rb2dComponent.FixedRotation;
+
+			out << YAML::EndMap; // Rigidbody2DComponent
+		}
+		if (entity.HasComponent<BoxCollider2DComponent>())
+		{
+			out << YAML::Key << "BoxCollider2DComponent";
+			out << YAML::BeginMap; // BoxCollider2DComponent
+
+			auto& bc2dComponent = entity.GetComponent<BoxCollider2DComponent>();
+			out << YAML::Key << "Offset" << YAML::Value << bc2dComponent.Offset;
+			out << YAML::Key << "Size" << YAML::Value << bc2dComponent.Size;
+			out << YAML::Key << "Density" << YAML::Value << bc2dComponent.Density;
+			out << YAML::Key << "Friction" << YAML::Value << bc2dComponent.Friction;
+			out << YAML::Key << "Restitution" << YAML::Value << bc2dComponent.Restitution;
+			out << YAML::Key << "RollingResistance" << YAML::Value << bc2dComponent.RollingResistance;
+			out << YAML::Key << "TangentSpeed" << YAML::Value << bc2dComponent.TangentSpeed;
+
+			out << YAML::EndMap; // BoxCollider2DComponent
+		}
+		if (entity.HasComponent<CircleCollider2DComponent>())
+		{
+			out << YAML::Key << "CircleCollider2DComponent";
+			out << YAML::BeginMap; // CircleCollider2DComponent
+
+			auto& cc2dComponent = entity.GetComponent<CircleCollider2DComponent>();
+			out << YAML::Key << "Offset" << YAML::Value << cc2dComponent.Offset;
+			out << YAML::Key << "Radius" << YAML::Value << cc2dComponent.Radius;
+			out << YAML::Key << "Density" << YAML::Value << cc2dComponent.Density;
+			out << YAML::Key << "Friction" << YAML::Value << cc2dComponent.Friction;
+			out << YAML::Key << "Restitution" << YAML::Value << cc2dComponent.Restitution;
+			out << YAML::Key << "RollingResistance" << YAML::Value << cc2dComponent.RollingResistance;
+			out << YAML::Key << "TangentSpeed" << YAML::Value << cc2dComponent.TangentSpeed;
+
+			out << YAML::EndMap; // CircleCollider2DComponent
+		}
+
+
+		out << YAML::EndMap;	//Entity
+	}
+
+	void SceneSerializer::Serialize(const std::string& filepath)
+	{
+		YAML::Emitter out;
+		out << YAML::BeginMap;
+		out << YAML::Key << "Scene" << YAML::Value << "Untitled";
+
+		const auto physicsWorldSettings = m_Scene->m_PhysicsWorldSettings;
+		out << YAML::Key << "PhysicsWorld" << YAML::Value << YAML::BeginMap;
+
+		out << YAML::Key << "Gravity" << YAML::Value << physicsWorldSettings.Gravity;
+		out << YAML::Key << "RestitutionThreshold" << YAML::Value << physicsWorldSettings.RestitutionThreshold;
+		out << YAML::EndMap;
+
+		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
+
+		//如今的m_Scene->m_Registry.each()已不再支持使用
+		//替换为m_Scene->m_Registry.storage<entt::entity>()
+		auto view = m_Scene->m_Registry.view<entt::entity>();
+		for (const auto ent : view)
+		{
+			Entity entity = { ent, m_Scene.get() };
+			if (!entity)
+				return;
+
+			SerializerEntity(out, entity);
+		}
+
+		out << YAML::EndSeq;
+		out << YAML::EndMap;
+
+		std::ofstream fout(filepath);
+		fout << out.c_str();
+	}
+
+	void SceneSerializer::SerializeRuntime(const std::string& filepath)
+	{
+		// Not implemented
+		RZ_CORE_ASSERT(false);
+	}
+
+	// 反序列化（将保存的场景数据从YAML中取出）
+	bool SceneSerializer::Deserialize(const std::string& filepath)
+	{
+		YAML::Node data = YAML::LoadFile(filepath);
+		if (!data["Scene"])
+			return false;
+
+		// 获取整个场景数据
+		std::string sceneName = data["Scene"].as<std::string>();
+		RZ_CORE_TRACE("Deserializing scene {0}", sceneName);
+
+
+		auto physicsWorldData = data["PhysicsWorld"];
+		if (physicsWorldData)
+		{
+			m_Scene->m_PhysicsWorldSettings = { physicsWorldData["Gravity"].as<glm::vec2>(),
+												physicsWorldData["RestitutionThreshold"].as<float>() };
+		}
+		// 获取实体数据
+		auto entities = data["Entities"];
+		if (entities)
+		{
+			// 遍历所有实体
+			for (auto entity:entities)
+			{
+				uint64_t uuid = entity["Entity"].as<uint64_t>();	// TODO
+				
+				// 获取Tag组件数据
+				std::string name;
+				auto tagComponent = entity["TagComponent"];
+				if (tagComponent)
+					name = tagComponent["Tag"].as<std::string>();
+
+				RZ_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
+				
+				// 使用反序列化后得到的实体信息来创建实体,
+				// 并根据保存的实体组件信息设置该新实体的组件
+				Entity deserializedEntity = m_Scene->CreateEntity(uuid, name);
+				auto transformComponent = entity["TransformComponent"];
+				if (transformComponent)
+				{
+					// 实体将总是含有变换组件
+					auto& tc = deserializedEntity.GetComponent<TransformComponent>();
+					tc.Translation = transformComponent["Translation"].as<glm::vec3>();
+					tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
+					tc.Scale = transformComponent["Scale"].as<glm::vec3>();
+				}
+
+				// 相机组件
+				auto cameraComponent = entity["CameraComponent"];
+				if (cameraComponent)
+				{
+					auto& cc = deserializedEntity.AddComponent<CameraComponent>();
+					auto& cameraProps = cameraComponent["Camera"];
+					cc.Camera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["ProjectionType"].as<int>());
+					
+					cc.Camera.SetPerspectiveVerticalFOV(cameraProps["PerspectiveFOV"].as<float>());
+					cc.Camera.SetPerspectiveNearClip(cameraProps["PerspectiveNear"].as<float>());
+					cc.Camera.SetPerspectiveFarClip(cameraProps["PerspectiveFar"].as<float>());
+
+					cc.Camera.SetOrthographicSize(cameraProps["OrthographicSize"].as<float>());
+					cc.Camera.SetOrthographicNearClip(cameraProps["OrthographicNear"].as<float>());
+					cc.Camera.SetOrthographicFarClip(cameraProps["OrthographicFar"].as<float>());
+
+					cc.Primary = cameraComponent["Primary"].as<bool>();
+					cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
+				}
+
+				// 精灵图集组件
+				auto spriteRendererComponent = entity["SpriteRendererComponent"];
+				if (spriteRendererComponent)
+				{
+					auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
+					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
+				}
+				// 圆形绘制组件
+				auto circleRendererComponent = entity["CircleRendererComponent"];
+				if (circleRendererComponent)
+				{
+					auto& crc = deserializedEntity.AddComponent<CircleRendererComponent>();
+					crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
+					crc.Thickness = circleRendererComponent["Thickness"].as<float>();
+					crc.Fade = circleRendererComponent["Fade"].as<float>();
+				}
+				// 刚体组件
+				auto rigidbody2DComponent = entity["Rigidbody2DComponent"];
+				if (rigidbody2DComponent)
+				{
+					auto& rb2d = deserializedEntity.AddComponent<Rigidbody2DComponent>();
+					rb2d.Type = RigidBody2DBodyTypeFromString(rigidbody2DComponent["BodyType"].as<std::string>());
+					rb2d.FixedRotation = rigidbody2DComponent["FixedRotation"].as<bool>();
+				}
+
+				// 碰撞体组件
+				auto boxCollider2DComponent = entity["BoxCollider2DComponent"];
+				if (boxCollider2DComponent)
+				{
+					auto& bc2d = deserializedEntity.AddComponent<BoxCollider2DComponent>();
+					bc2d.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
+					bc2d.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
+					bc2d.Density = boxCollider2DComponent["Density"].as<float>();
+					bc2d.Friction = boxCollider2DComponent["Friction"].as<float>();
+					bc2d.Restitution = boxCollider2DComponent["Restitution"].as<float>();
+					bc2d.RollingResistance = boxCollider2DComponent["RollingResistance"].as<float>();
+					bc2d.TangentSpeed = boxCollider2DComponent["TangentSpeed"].as<float>();
+
+				}
+				auto circleCollider2DComponent = entity["CircleCollider2DComponent"];
+				if (circleCollider2DComponent)
+				{
+					auto& cc2d = deserializedEntity.AddComponent<CircleCollider2DComponent>();
+					cc2d.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
+					cc2d.Radius = circleCollider2DComponent["Radius"].as<float>();
+					cc2d.Density = circleCollider2DComponent["Density"].as<float>();
+					cc2d.Friction = circleCollider2DComponent["Friction"].as<float>();
+					cc2d.Restitution = circleCollider2DComponent["Restitution"].as<float>();
+					cc2d.RollingResistance = circleCollider2DComponent["RollingResistance"].as<float>();
+					cc2d.TangentSpeed = circleCollider2DComponent["TangentSpeed"].as<float>();
+
+				}
+			}
+
+		}
+		return true;
+	}
+
+	// 运行时反序列化
+	bool SceneSerializer::DeserializeRuntime(const std::string& filepath)
+	{
+		// Not implemented
+		RZ_CORE_ASSERT(false);
+		return false;
+	}
+
+}
