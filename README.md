@@ -1,7 +1,10 @@
 # VoicePilot (七牛云秋招第二批议题二)
 
 一个桌面语音助手应用程序，支持语音识别、自然语言处理和智能响应。
+
 视频链接:https://www.bilibili.com/video/BV1oPszzJEM8/?vd_source=2e3dafb0c18640e83790e924b40c44fb
+
+**文档架构等说明请见根下docs目录**
 
 ## 🚀 快速开始
 
@@ -36,6 +39,8 @@
    # Windows
    # 打开生成的 .sln 文件，在 Visual Studio 中编译
    ```
+
+   可能需要补充Python3.12环境,并 `pip install -q -U google-genai`
 
 ## 🎮 使用说明
 
