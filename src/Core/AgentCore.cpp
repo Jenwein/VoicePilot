@@ -61,6 +61,13 @@ namespace Razel
     AgentCore::~AgentCore()
 	{        
         CancelOperation();
+
+			if (m_ProcessingTask.valid())
+			{
+				std::cout << "[AgentCore] Waiting for processing task to finish..." << std::endl;
+				m_ProcessingTask.wait(); //  <--- 这是关键的补充！
+				std::cout << "[AgentCore] Processing task finished." << std::endl;
+			}
     }
 
     void AgentCore::StartListening()

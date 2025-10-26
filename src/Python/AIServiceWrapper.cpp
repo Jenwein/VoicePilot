@@ -17,6 +17,7 @@ namespace Razel
 
         //m_AIServiceModule = py::module();
         DestroyChatSession();
+        PythonManager::GetInstance().Shutdown();
     }
 
     bool AIServiceWrapper::Initialize()

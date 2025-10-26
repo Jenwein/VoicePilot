@@ -61,6 +61,7 @@ namespace Razel {
 	void EditorLayer::OnDetach()
 	{
 		RZ_PROFILE_FUNCTION();
+		m_AgentCore.reset();
 	}
 
 	void EditorLayer::OnUpdate(Timestep ts)
