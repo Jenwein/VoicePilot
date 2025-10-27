@@ -27,7 +27,7 @@ namespace Razel
 		try
 		{
 
-			std::wstring pythonHome = std::filesystem::current_path().wstring();
+			std::wstring pythonHome = std::filesystem::current_path().wstring() + L"\\scripts\\embed";
 			Py_SetPythonHome(pythonHome.c_str());
 
 			// 初始化 Python 解释器
@@ -134,7 +134,7 @@ namespace Razel
 
 		try
 		{
-			m_Module =  py::module::import(moduleName.c_str());
+			m_Module = py::module::import(moduleName.c_str());
 		}
 		catch (const py::error_already_set& e)
 		{
@@ -243,8 +243,8 @@ namespace Razel
 				AddPythonPath(scriptsPath.string());
 			}
 
-			AddPythonPath((currentPath.parent_path() / "VoicePilot" / "scripts").string());
-			AddPythonPath((currentPath / "vendor" / "python" / "embeddable" / "lib" / "site-packages").string());
+			AddPythonPath((currentPath.parent_path() / "scripts").string());
+			//AddPythonPath((scriptsPath / "embed" / "bin" / "site-packages").string());
 
 			// 设置Python编码为UTF-8（Windows兼容性）
 			ExecuteCode("import sys; import os; import locale");
@@ -285,5 +285,5 @@ namespace Razel
 			throw std::runtime_error("Failed to setup Python environment: " + std::string(e.what()));
 		}
 	}
-	
+
 }

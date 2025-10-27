@@ -35,7 +35,8 @@ setup_logging()
 def _get_client():
     """获取Gemini客户端，如果失败抛出异常"""
     try:
-        return genai.Client()
+        api_key = "AIzaSyB8hGKs-VOBuUoDRD4DJ4c4ZTWPWKJdt0g"
+        return genai.Client(api_key=api_key)
     except KeyError:
         logging.error("请先设置 GEMINI_API_KEY 环境变量。")
         raise RuntimeError("环境变量未设置：请先设置 GEMINI_API_KEY 环境变量")

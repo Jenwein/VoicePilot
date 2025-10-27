@@ -46,7 +46,12 @@
 			{
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll\" \"%{cfg.targetdir}\""),
 				("{COPY} \"%{wks.location}/Razel/vendor/assimp/bin/Release/assimp-vc143-mt.dll\" \"%{cfg.targetdir}\""),
-				("{COPY} \"%{wks.location}/VoicePilot/vendor/python/bin/python312.dll\" \"%{cfg.targetdir}\""),
+				("{COPY} \"%{wks.location}/VoicePilot/scripts/embed/python312.dll\" \"%{cfg.targetdir}\""),
+				("{COPY} \"%{wks.location}/VoicePilot/scripts/embed/python312.zip\" \"%{cfg.targetdir}\""),
+				("{COPY} \"%{wks.location}/VoicePilot/scripts/embed/python312._pth\" \"%{cfg.targetdir}\""),
+				("{COPYDIR} \"%{wks.location}/VoicePilot/scripts\" \"%{cfg.targetdir}/scripts\""),
+				("{COPYDIR} \"%{wks.location}/VoicePilot/Resources\" \"%{cfg.targetdir}/Resources\""),
+				("{COPYDIR} \"%{wks.location}/VoicePilot/assets\" \"%{cfg.targetdir}/assets\""),
 			}
 
 		filter "configurations:Debug"
