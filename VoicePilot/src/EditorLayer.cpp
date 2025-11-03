@@ -51,7 +51,7 @@ namespace Razel {
 		modelComp.FlipUVs = false;
 		modelComp.Model = CreateRef<Model>(modelComp.FilePath, modelComp.FlipUVs);
 		auto& modelComponent = m_VoiceAssistantEntity.AddComponent<ModelComponent>(modelComp);
-		
+
 		auto& transformComponent = m_VoiceAssistantEntity.GetComponent<TransformComponent>();
 		//transformComponent.Translation = { 0.0f, 0.0f, 0.0f };
 		transformComponent.Rotation = { 0.0f, 90.0f, 0.0f };
@@ -189,7 +189,7 @@ namespace Razel {
 
 		// Submit the DockSpace
 		ImGuiIO& io = ImGui::GetIO();
-		
+
 		ImGuiStyle& style = ImGui::GetStyle();
 		float minWinSizeX = style.WindowMinSize.x;
 		style.WindowMinSize.x = 370.0f;
@@ -250,7 +250,7 @@ namespace Razel {
 		ImGui::TextWrapped("%s", GetStateDisplayText().c_str());
 
 		ImGui::End();
-	
+
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0,0 });
 		ImGui::Begin("Viewport");
 
@@ -550,7 +550,7 @@ namespace Razel {
 		case AgentState::Processing:
 			return "正在处理您的请求,请稍候...";
 		case AgentState::Speaking:
-			return "正在播放回复...";
+			return "正在回复...";
 		default:
 			return "点击兔子开始说话,再次点击停止说话并发送请求";
 		}

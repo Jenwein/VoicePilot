@@ -7,6 +7,5 @@
 /Razel.log
 /scripts/__pycache__
 *.wav
-/Resources/prompts/toolDefsPrompt.json
 /.vs/VoicePilot
 /VoicePilot.sln
