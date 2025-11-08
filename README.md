@@ -40,7 +40,7 @@
    # 打开生成的 .sln 文件，在 Visual Studio 中编译
    ```
 
-   可能需要补充Python3.12环境,并 `pip install -q -U google-genai`
+   需要配置您自己的Gemini环境变量,GEMINI_API_KEY,获取方式参考 https://ai.google.dev/gemini-api/docs/api-key?hl=zh-cn
 
 ## 🎮 使用说明
 
