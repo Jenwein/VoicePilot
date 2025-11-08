@@ -102,6 +102,8 @@ VoicePilot/
 ## 开源使用
 
 - [ImGui](https://github.com/ocornut/imgui) - 即时模式图形用户界面
+- [miniaudio](https://github.com/mackron/miniaudio) - 音频库
+- [pybind11](https://github.com/pybind/pybind11) - CPython封装，python调用
 ---
 
 ⭐ 如果这个项目对您有帮助，请给个 Star！
