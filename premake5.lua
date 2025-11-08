@@ -2,7 +2,7 @@ include "./vendor/premake/premake_customization/solution_items.lua"
 workspace "VoicePilot"
 	architecture "x86_64"
 	startproject "VoicePilot"
-	--Ö¸¶¨¹¤×÷Çø»òÏîÄ¿µÄ¹¹½¨ÅäÖÃ¼¯£¬ÀıÈç¡°µ÷ÊÔ¡±ºÍ¡°·¢²¼¡±
+	--æŒ‡å®šå·¥ä½œåŒºæˆ–é¡¹ç›®çš„æ„å»ºé…ç½®é›†ï¼Œä¾‹å¦‚â€œè°ƒè¯•â€å’Œâ€œå‘å¸ƒâ€
 	configurations
 	{
 		"Debug",
@@ -20,7 +20,7 @@ workspace "VoicePilot"
 		"MultiProcessorCompile"
 	}
 
-	--Êä³öÎ»ÖÃ	eg: build-Windows-x64
+	--è¾“å‡ºä½ç½®	eg: build-Windows-x64
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 	
 	-- Include directories relative to root folder (solution directory)
@@ -39,7 +39,7 @@ workspace "VoicePilot"
         buildoptions { "/utf-8" , "/wd4828" }
     filter {}
 	externalwarnings "Off"
-	--²éÕÒ²¢Ö´ĞĞÁíÒ»¸ö½Å±¾ÎÄ¼ş£¬Ò²¾ÍÊÇ²éÕÒÂ·¾¶ÏÂµÄpremakeÎÄ¼ş²¢½«ÄÚÈİ¿½±´µ½´Ë´¦(Èç¹ûÖ®Ç°ÉĞÎ´ÔËĞĞ¹ı)
+	--æŸ¥æ‰¾å¹¶æ‰§è¡Œå¦ä¸€ä¸ªè„šæœ¬æ–‡ä»¶ï¼Œä¹Ÿå°±æ˜¯æŸ¥æ‰¾è·¯å¾„ä¸‹çš„premakeæ–‡ä»¶å¹¶å°†å†…å®¹æ‹·è´åˆ°æ­¤å¤„(å¦‚æœä¹‹å‰å°šæœªè¿è¡Œè¿‡)
 group "Dependencies"
 	include "vendor/premake"
 	include "Razel/vendor/Box2D"

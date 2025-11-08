@@ -58,7 +58,7 @@ namespace Razel
 	public:
 		static PythonManager& GetInstance();
 
-		bool Initialize();
+		bool Initialize(const std::wstring& pythonHome);
 		void ImportModule(const std::string& moduleName);
 		void AddPythonPath(const std::string& path);
 		bool ExecuteCode(const std::string& code);

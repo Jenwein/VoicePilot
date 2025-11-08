@@ -5,10 +5,7 @@
 /VoicePilot.vcxproj
 /VoicePilot.vcxproj.filters
 /Razel.log
-/scripts/__pycache__/ai_service.cpython-312.pyc
-/Resources/audios/input1.wav
-/Resources/audios/output.wav
-/Resources/prompts/toolDefsPrompt.json
+/scripts/__pycache__
+*.wav
 /.vs/VoicePilot
 /VoicePilot.sln
-*.wav

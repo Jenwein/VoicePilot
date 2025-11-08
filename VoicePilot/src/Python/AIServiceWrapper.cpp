@@ -33,7 +33,7 @@ namespace Razel
             auto& pythonManager = PythonManager::GetInstance();
             if (!pythonManager.IsInitialized())
             {
-                if (!pythonManager.Initialize())
+                if (!pythonManager.Initialize(L"/scripts/python"))
                 {
                     SetLastError("Failed to initialize Python Manager");
                     return false;
