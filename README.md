@@ -1,5 +1,6 @@
 # VoicePilot (七牛云秋招第二批议题二)
 
+(目前已进入后续阶段，可以修改了吧 QAQ )
 一个桌面语音助手应用程序，支持语音识别、自然语言处理和智能响应。
 
 视频链接:https://www.bilibili.com/video/BV1oPszzJEM8/?vd_source=2e3dafb0c18640e83790e924b40c44fb
@@ -40,7 +41,7 @@
    # 打开生成的 .sln 文件，在 Visual Studio 中编译
    ```
 
-   可能需要补充Python3.12环境,并 `pip install -q -U google-genai`
+   需要配置您自己的Gemini环境变量,GEMINI_API_KEY,获取方式参考 https://ai.google.dev/gemini-api/docs/api-key?hl=zh-cn
 
 ## 🎮 使用说明
 
@@ -102,6 +103,8 @@ VoicePilot/
 ## 开源使用
 
 - [ImGui](https://github.com/ocornut/imgui) - 即时模式图形用户界面
+- [miniaudio](https://github.com/mackron/miniaudio) - 音频库
+- [pybind11](https://github.com/pybind/pybind11) - CPython封装，python调用
 ---
 
 ⭐ 如果这个项目对您有帮助，请给个 Star！
